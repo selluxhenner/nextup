@@ -10,7 +10,7 @@ import type { OrgPerson, Problem, RolePersona, Route } from "@/features/demo/typ
 import { propose } from "@/features/routing";
 import { scoreCase, type Score } from "@/features/scoring";
 
-export type EvalInput = { kind: CaseKind; text: string; affected: string[]; attachments: number; who: { name: string; line: string; handle: string | null } };
+export type EvalInput = { kind: CaseKind; text: string; context?: string; affected: string[]; attachments: number; who: { name: string; line: string; handle: string | null } };
 export type KnownCase = { title: string; from: string; age: number; open: boolean };
 export type EvalContext = { routes: readonly Route[]; people: readonly OrgPerson[]; personas: readonly RolePersona[]; problems: readonly Problem[]; cases: readonly KnownCase[]; promiseDays: number };
 export type EvalStep = { id: string; title: string; detail: string };
@@ -49,16 +49,18 @@ function closest<T>(text: string, items: readonly T[], of: (t: T) => string): T 
 
 export function evaluate(input: EvalInput, ctx: EvalContext): Evaluation {
   const text = input.text.trim();
-  const lower = text.toLowerCase();
-  const proposal = propose(text, ctx.routes);
+  const context = (input.context ?? "").trim();
+  const full = context ? text + " " + context : text; // the one line is the title; the optional context only helps the matching
+  const lower = full.toLowerCase();
+  const proposal = propose(full, ctx.routes);
   const route = proposal?.route ?? null;
   const confidence = proposal?.confidence ?? 0;
   const me = ctx.people.find((p) => p.name === input.who.name);
   const lead = me?.reportsTo ?? ctx.personas.find((r) => r.id === "leader")?.who.name ?? "Triage desk";
   const leadRow = ctx.people.find((p) => p.name === lead);
   const passesTo = route && route.owner.name !== lead ? route.owner.name : null;
-  const similar = closest(text, ctx.problems, (p) => p.title + " " + p.sub);
-  const sameAs = closest(text, ctx.cases.filter((c) => c.title !== text), (c) => c.title);
+  const similar = closest(full, ctx.problems, (p) => p.title + " " + p.sub);
+  const sameAs = closest(full, ctx.cases.filter((c) => c.title !== text), (c) => c.title);
   const goal = GOALS.find((g) => g.keys.some((k) => lower.includes(k))) ?? null;
   const spend = /€|spend|buy|order|purchase|budget|cost|invoice/.test(lower);
   // Scored exactly as the dashboard will score the stored case: the goal it serves is kept as its upside.
@@ -67,7 +69,7 @@ export function evaluate(input: EvalInput, ctx: EvalContext): Evaluation {
   const thing = input.kind === "idea" ? "idea" : "problem";
 
   const steps: EvalStep[] = [
-    { id: "read", title: "Reading the " + thing, detail: words(text).length + " words from " + (input.who.handle ?? input.who.name) + " · " + input.who.line + (input.attachments ? " · " + input.attachments + (input.attachments === 1 ? " screenshot" : " screenshots") : "") },
+    { id: "read", title: "Reading the " + thing, detail: words(full).length + " words from " + (input.who.handle ?? input.who.name) + " · " + input.who.line + (input.attachments ? " · " + input.attachments + (input.attachments === 1 ? " screenshot" : " screenshots") : "") },
     { id: "org", title: "Org chart · who is responsible", detail: (leadRow ? lead + " leads your team (" + leadRow.role + ")" : lead + " leads your team") + (route ? " · " + route.owner.name + " owns “" + route.type + "”" : " · no map entry matches yet") },
     { id: "goals", title: "Company goals & values", detail: goal ? "Serves: “" + goal.goal + "”" : "No stated goal matches directly — logged as a new signal" },
     { id: "budget", title: "Budget & authority", detail: spend ? "Spend involved — " + SPEND_RULE.text : "No spend needed to decide this" },
@@ -80,6 +82,6 @@ export function evaluate(input: EvalInput, ctx: EvalContext): Evaluation {
 
   return {
     steps, route, confidence, lead, passesTo, similar, sameAs, score,
-    payload: { kind: input.kind, title: text, body: "", upside, routeId: route?.id ?? null, assignee: lead, fromDept: input.who.line, reason: route ? "triage" : "not responsible", affected: input.affected, attachments: input.attachments },
+    payload: { kind: input.kind, title: text, body: context, upside, routeId: route?.id ?? null, assignee: lead, fromDept: input.who.line, reason: route ? "triage" : "not responsible", affected: input.affected, attachments: input.attachments },
   };
 }

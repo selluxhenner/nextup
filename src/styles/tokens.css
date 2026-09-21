@@ -36,6 +36,7 @@
 
   --nh-font: var(--font-sans, "Manrope"), system-ui, -apple-system, "Segoe UI", sans-serif;   /* --font-sans set by next/font in layout.tsx */
   --nh-mono: var(--font-mono, "IBM Plex Mono"), ui-monospace, SFMono-Regular, Menlo, monospace;
+  --nh-serif: var(--font-serif, "Instrument Serif"), Georgia, "Times New Roman", serif;   /* section headings on the raise page */
 
   --nh-r-sm: 8px;
   --nh-r: 11px;
