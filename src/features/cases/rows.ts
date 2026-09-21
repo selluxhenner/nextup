@@ -4,7 +4,7 @@ import { days } from "@/lib/utils/format";
 import { scoreCase, type Score } from "@/features/scoring";
 import type { CaseKind, EventLog } from "./events";
 import type { ReducedCase, ReducedIdea } from "./reducer";
-import { affectedOn } from "./selectors";
+import { affectedOn, rescoresOn } from "./selectors";
 
 export type StepTone = "done" | "now" | "late" | "todo";
 export type Step = { label: string; when: string; tone: StepTone };
@@ -124,6 +124,7 @@ export function dashboardRow(c: ReducedCase, promiseDays: number, viewer: { name
   // Named when raised, plus everyone who pressed "this affects me too" since.
   const affected = [...raised.affected, ...(log ? affectedOn(log, c.id).map((a) => a.name) : []).filter((n) => !raised.affected.includes(n))];
   const attachments = raised.attachments;
+  const updates = log ? rescoresOn(log, c.id).length : 0;
   const stage: DashStage = c.shipped ? "Shipped" : c.building ? "Building" : c.decided ? (c.decided.answer === "yes" ? "Approved" : "Declined")
     : c.status === "asked" ? "Question" : c.read !== null ? "Read" : "Sent";
   const chain = [c.handed.length ? c.handed[0].from : c.assignee, ...c.handed.map((h) => h.to)];
@@ -131,6 +132,6 @@ export function dashboardRow(c: ReducedCase, promiseDays: number, viewer: { name
   return {
     id: c.id, kind: c.kind, title: c.title, from: c.from, fromDept: c.fromDept, mine: c.from === viewer.name || c.from === viewer.handle, fresh: !c.seed && c.age === 0,
     openDays: c.age, open: c.open, overdue: c.overdue, stage, chain, escalated: !!c.escalated, affected, attachments,
-    score: scoreCase({ ...c, affected: affected.length, evidence: attachments }, promiseDays), sortDay: c.raisedDay,
+    score: scoreCase({ ...c, affected: affected.length, evidence: attachments, updates }, promiseDays), sortDay: c.raisedDay,
   };
 }

@@ -1,0 +1,18 @@
+/* The ground: fixed and z-index -1, so it paints under everything in the shell. The shell that
+   renders it must not paint its own background on top (its root stays transparent). */
+.ground { position: fixed; inset: 0; z-index: -1; overflow: hidden; background: #f9fcfc; pointer-events: none; }
+.ground > span { position: absolute; border-radius: 50%; filter: blur(72px); will-change: transform; }
+.blob1 { width: 900px; height: 700px; top: -200px; left: -180px; background: radial-gradient(circle, #bfd6f8 0%, rgb(191 214 248 / 0) 70%); animation: drift1 18s ease-in-out infinite; }
+.blob2 { width: 800px; height: 650px; top: -160px; right: -200px; background: radial-gradient(circle, #d0e4fb 0%, rgb(208 228 251 / 0) 70%); animation: drift2 22s ease-in-out infinite; }
+.blob3 { width: 1000px; height: 500px; top: 40%; left: 50%; transform: translateX(-50%); background: radial-gradient(circle, #c3d8f9 0%, rgb(195 216 249 / 0) 68%); animation: drift3 26s ease-in-out infinite; }
+.blob4 { width: 700px; height: 600px; bottom: -180px; left: 10%; background: radial-gradient(circle, #ddeafc 0%, rgb(221 234 252 / 0) 70%); animation: drift4 20s ease-in-out infinite; }
+.grain { inset: 0; border-radius: 0; filter: none; opacity: 0.18; mix-blend-mode: multiply; background-size: 160px 160px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.45'/%3E%3C/svg%3E"); }
+@keyframes drift1 { 0% { transform: translate(0, 0) scale(1); } 33% { transform: translate(80px, 60px) scale(1.06); } 66% { transform: translate(-40px, 100px) scale(0.96); } 100% { transform: translate(0, 0) scale(1); } }
+@keyframes drift2 { 0% { transform: translate(0, 0) scale(1); } 40% { transform: translate(-100px, 80px) scale(1.08); } 70% { transform: translate(50px, 40px) scale(0.94); } 100% { transform: translate(0, 0) scale(1); } }
+@keyframes drift3 { 0% { transform: translateX(-50%) translateY(0) scale(1); } 50% { transform: translateX(-50%) translateY(-60px) scale(1.1); } 100% { transform: translateX(-50%) translateY(0) scale(1); } }
+@keyframes drift4 { 0% { transform: translate(0, 0) scale(1); } 45% { transform: translate(120px, -50px) scale(1.05); } 80% { transform: translate(-30px, -80px) scale(0.97); } 100% { transform: translate(0, 0) scale(1); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .ground > span { animation: none; }
+}

@@ -1,4 +1,4 @@
-.shell { min-height: 100dvh; display: grid; grid-template-columns: minmax(300px, 5fr) 7fr; background: var(--nh-app-ground); }
+.shell { min-height: 100dvh; display: grid; grid-template-columns: minmax(300px, 5fr) 7fr; } /* the blue Ground paints the surface */
 
 .side { background: var(--nh-dark); color: var(--nh-on-dark); padding: 28px 36px; display: flex; flex-direction: column; gap: 32px; }
 .logo { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 17px; letter-spacing: -0.02em; color: var(--nh-on-dark); }

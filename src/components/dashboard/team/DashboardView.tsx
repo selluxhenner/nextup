@@ -1,10 +1,12 @@
 "use client";
-// TEAM MEMBER dashboard: every problem and idea in the company as one list - how long it has
-// been open, whose desk it is on (and every desk before that), what stage it is at, and the
-// score. Click a row for the full case. Rows are facts from dashboardRow(); nothing is stored.
+// The dashboard: problems and ideas as one list - how long open, whose desk (and every desk
+// before that), what stage, and the score. Click a row for the full case. Rows are facts from
+// dashboardRow(); nothing is stored. Who sees what (derive.visibleTo): an employee only what they
+// raised; a team leader their own and their people's; a manager everything.
 import Link from "next/link";
 import { useState } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
+import { visibleTo } from "@/components/dashboard/derive";
 import { Avatar, Pill, statusTone } from "@/components/dashboard/shared/primitives";
 import { dashboardRow, type DashRow } from "@/features/cases/rows";
 import { scoreBand } from "@/features/scoring";
@@ -23,13 +25,14 @@ const stageTone = (s: DashRow["stage"]) => (s === "Read" ? "soft" : s === "Quest
 
 export function DashboardView() {
   const ctx = useDemo();
-  const { seed, D, log, persona, ready, href } = ctx;
+  const { seed, D, log, persona, role, ready, href } = ctx;
   const [filter, setFilter] = useState<Filter>("all");
   const [sort, setSort] = useState<Sort>("score");
   if (!ready) return <div className={styles.loading} />;
 
   const who = persona.who;
-  const rows = D.cases.map((c) => dashboardRow(c, seed.promiseDays, who, log));
+  const rows = D.cases.filter((c) => visibleTo(ctx, c)).map((c) => dashboardRow(c, seed.promiseDays, who, log));
+  const filters = role === "member" ? FILTERS.filter((f) => f.id !== "mine") : FILTERS; // every row is the employee's own
   const counts: Record<Filter, number> = {
     all: rows.length, problem: rows.filter((r) => r.kind === "problem").length, idea: rows.filter((r) => r.kind === "idea").length, mine: rows.filter((r) => r.mine).length,
   };
@@ -49,11 +52,11 @@ export function DashboardView() {
       <div className={styles.head}>
         <div>
           <h1 className={styles.title}>Dashboard</h1>
-          <p className={styles.sub}>{open} open · {late ? late + " past the " + seed.promiseDays + "-day promise" : "all inside the " + seed.promiseDays + "-day promise"}</p>
+          <p className={styles.sub}>{role === "member" ? "What you raised · " : role === "leader" ? "Your own and your people’s · " : ""}{open} open · {late ? late + " past the " + seed.promiseDays + "-day promise" : "all inside the " + seed.promiseDays + "-day promise"}</p>
         </div>
         <div className={styles.tools}>
           <div className={styles.chips} role="group" aria-label="Show">
-            {FILTERS.map((f) => (
+            {filters.map((f) => (
               <button key={f.id} type="button" className={styles.chip} aria-pressed={filter === f.id} onClick={() => setFilter(f.id)}>
                 {f.label}<span className={styles.chipN}>{counts[f.id]}</span>
               </button>
@@ -78,7 +81,7 @@ export function DashboardView() {
         </div>
         {shown.length === 0 && (
           <div className={styles.empty}>
-            {filter === "mine" ? "You have not raised anything yet." : "Nothing here yet."} <Link href={href("/raise")} className={styles.emptyLink}>Raise the first one →</Link>
+            {filter === "mine" || role === "member" ? "You have not raised anything yet." : "Nothing here yet."} <Link href={href("/raise")} className={styles.emptyLink}>Raise the first one →</Link>
           </div>
         )}
         {shown.map((r) => (

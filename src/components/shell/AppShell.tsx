@@ -11,6 +11,7 @@ import { SITE } from "@/config/site";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { mineRows, openCases } from "@/components/dashboard/derive";
 import { DevPanel } from "./DevPanel";
+import { Ground } from "./Ground";
 import { InputSheet } from "./InputSheet";
 import { SimpleShell } from "./SimpleShell";
 import { TopBar } from "./TopBar";
@@ -40,6 +41,7 @@ function RailShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className={styles.root}>
+      <Ground />
       <aside className={styles.rail} data-open={menu ? "true" : undefined} aria-label="Main">
         <div className={styles.brand}>
           <Image src="/brand/logo.png" alt="" width={28} height={28} className={styles.logo} />

@@ -2,7 +2,7 @@
   position: sticky; top: 0; z-index: 10;
   display: flex; align-items: center; gap: 24px;
   height: 64px; padding: 0 var(--nh-page-x);
-  background: rgb(245 245 247 / 0.85); backdrop-filter: saturate(180%) blur(12px);
+  background: rgb(255 255 255 / 0.62); backdrop-filter: saturate(180%) blur(12px);
   border-bottom: 1px solid rgb(0 0 0 / 0.06);
 }
 .logo { display: flex; align-items: center; gap: 10px; font-weight: 800; letter-spacing: -0.02em; font-size: 17px; }

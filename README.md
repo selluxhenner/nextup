@@ -1,4 +1,4 @@
-# NextHub
+# NextUp
 
 Who owns what, and what is waiting on whom. An employee raises a case in one field, it lands in
 the right leader's inbox with a clock, the leader answers, management sees the wait ledger.

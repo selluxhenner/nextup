@@ -1,4 +1,4 @@
-# CI for NextHub (Next.js app at the root, static demo in legacy/demo).
+# CI for NextUp (Next.js app at the root, static demo in legacy/demo).
 #
 # Four jobs, all must pass before a PR can merge:
 #   guard   — no secrets / forbidden files / edits to generated code

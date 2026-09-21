@@ -16,14 +16,14 @@ export default function FindCompanyPage() {
           <h2>Nineteen working days.<br />Three of them are work.</h2>
           <p>Log in to see what is waiting on whom - and for how long. One home screen per role:</p>
           <AuthRoles items={[
-            ["Team member", "Raise", "Problem or idea in one box - NextHub names the owner and the deadline."],
+            ["Team member", "Raise", "Problem or idea in one box - NextUp names the owner and the deadline."],
             ["Team leader", "Inbox", "Open items, oldest first. Yes, no and why, pass on, or ask - one click."],
             ["Manager", "Overview", "What is waiting on you, the wait ledger, where the waiting goes."],
           ]} />
         </>
       }
     >
-      <AuthTitle step="Step 1 of 2" title="Find your company" sub="Enter your work email or your company's NextHub name. We will take you to your company's login." />
+      <AuthTitle step="Step 1 of 2" title="Find your company" sub="Enter your work email or your company's NextUp name. We will take you to your company's login." />
 
       <form className={styles.form} action="/acme/login" method="get" autoComplete="off">
         <Field id="email" label="Work email">
@@ -35,7 +35,7 @@ export default function FindCompanyPage() {
         <Field id="company" label="Company name" hint="The short name in your invitation link.">
           <div className={styles.slug}>
             <input className="nh-input" id="company" type="text" placeholder="acme" defaultValue="acme" autoComplete="organization" />
-            <span className={`${styles.slugSuffix} nh-mono`}>.nexthub.app</span>
+            <span className={`${styles.slugSuffix} nh-mono`}>.nextup.app</span>
           </div>
         </Field>
 

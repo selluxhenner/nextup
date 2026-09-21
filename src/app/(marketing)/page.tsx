@@ -11,10 +11,10 @@ const P = SITE.promiseDays;
 // `why` is the one design reason we give a customer in the room - why the screen is this small.
 const STEPS = [
   { who: "Team member", title: "Raise it in one box.",
-    body: "Problem or idea, one line, a screenshot if it helps. NextHub reads it against the company's own org chart and routing map, names the owner and the day an answer is due.",
+    body: "Problem or idea, one line, a screenshot if it helps. NextUp reads it against the company's own org chart and routing map, names the owner and the day an answer is due.",
     why: "If raising a problem takes longer than complaining about it, it stays in the corridor. So: no form, no category tree, no ticket - the routing is done for you.",
     shot: "/screenshots/raise-box-2.png", w: 1600, h: 900,
-    alt: "The raise box: Problem and Idea tabs, one text field, screenshot and also-affected options, Send to NextHub" },
+    alt: "The raise box: Problem and Idea tabs, one text field, screenshot and also-affected options, Send to NextUp" },
   { who: "Team leader", title: "Answer in one click.",
     body: `Open items, oldest first, each with the days left on its clock. Yes, no and why, pass it on, or ask a question. Miss the ${P}-day promise and it moves to the deputy by itself.`,
     why: "A leader's job here is to answer, not to manage a tool. Four buttons and no free-text status: an answer takes seconds, and every answer is a fact the ledger can count.",
@@ -33,7 +33,7 @@ export default function LandingPage() {
       <section className={styles.hero}>
         <h1>{SITE.tagline}</h1>
         <p className={styles.lead}>
-          Raise a problem or an idea in one box. NextHub names who owns it and when they owe an answer.
+          Raise a problem or an idea in one box. NextUp names who owns it and when they owe an answer.
           Everyone sees what is waiting on whom.
         </p>
         <div className={styles.cta}>

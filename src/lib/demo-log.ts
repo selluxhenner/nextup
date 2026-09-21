@@ -8,10 +8,22 @@ import type { Role } from "@/config/roles";
 export type DemoPrefs = { role?: Role; leadAs?: string | null; demo?: boolean; dept?: string };
 export type Persisted = { log: EventLog; prefs: DemoPrefs; loaded: boolean };
 
-const logKey = (slug: string) => "nexthub." + slug + ".log.v1";
-const prefsKey = (slug: string) => "nexthub." + slug + ".prefs.v1";
+const logKey = (slug: string) => "nextup." + slug + ".log.v1";
+const prefsKey = (slug: string) => "nextup." + slug + ".prefs.v1";
+
+// The product was NextHub until 21 Sep 2026: a browser that still holds "nexthub.*" keys gets
+// them moved over once so nobody loses their demo log on the rename.
+function migrate(key: string) {
+  const old = key.replace(/^nextup\./, "nexthub.");
+  try {
+    const v = localStorage.getItem(old);
+    if (v !== null && localStorage.getItem(key) === null) localStorage.setItem(key, v);
+    if (v !== null) localStorage.removeItem(old);
+  } catch { /* ignore */ }
+}
 
 function read<T>(key: string): T | null {
+  migrate(key);
   try { const v = localStorage.getItem(key); return v ? (JSON.parse(v) as T) : null; } catch { return null; }
 }
 function write(key: string, v: unknown) {

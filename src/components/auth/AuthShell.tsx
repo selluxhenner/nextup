@@ -2,6 +2,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { SITE } from "@/config/site";
+import { Ground } from "@/components/shell/Ground";
 import styles from "./AuthShell.module.css";
 
 type Props = { side: React.ReactNode; children: React.ReactNode };
@@ -9,6 +10,7 @@ type Props = { side: React.ReactNode; children: React.ReactNode };
 export function AuthShell({ side, children }: Props) {
   return (
     <div className={styles.shell}>
+      <Ground />
       <aside className={styles.side}>
         <Link className={styles.logo} href="/" aria-label={`${SITE.name} home`}>
           <Image src="/brand/logo.png" alt="" width={28} height={28} />

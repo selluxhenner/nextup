@@ -23,8 +23,25 @@ export function mineRows(ctx: DemoContext): MineRow[] {
     .sort((a, b) => b.sortDay - a.sortDay);
 }
 
+// Who sees which case in the lists. An employee: only what they raised. A team leader: what they
+// raised and what the people who report to them raised (by name or by their anonymous handle) -
+// not the rest of the company; what merely sits on their desk is the inbox's job. A manager: everything.
+export function visibleTo(ctx: DemoContext, c: ReducedCase): boolean {
+  const { name, handle } = ctx.persona.who;
+  const own = c.from === name || (handle !== null && c.from === handle);
+  if (ctx.role === "member") return own;
+  if (ctx.role !== "leader") return true;
+  const reports = ctx.seed.people.filter((p) => p.reportsTo === name).map((p) => p.name);
+  const handles = ctx.seed.personas.filter((r) => reports.includes(r.who.name) && r.who.handle).map((r) => r.who.handle as string);
+  return own || reports.includes(c.from) || handles.includes(c.from);
+}
+
+// Who may open a case by its link: what they see in the lists, plus what sits on their desk (a
+// lead opens their inbox cases here too). An employee cannot open a colleague's case by URL.
+export const canOpen = (ctx: DemoContext, c: ReducedCase) => visibleTo(ctx, c) || onDesk(c, ctx.persona.who.name);
+
 // ── problems / ideas in the current department scope, with the list views' sort orders ──
-import type { ReducedIdea, ReducedProblem } from "@/features/cases/reducer";
+import type { ReducedCase, ReducedIdea, ReducedProblem } from "@/features/cases/reducer";
 import { criteriaCount, upsideNum } from "@/features/metrics";
 
 export const problemOf = (ctx: DemoContext, i: ReducedIdea) => ctx.S.problems.find((p) => p.id === i.problem);
