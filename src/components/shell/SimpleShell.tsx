@@ -8,7 +8,7 @@ import { usePathname } from "next/navigation";
 import { NAV_SIMPLE } from "@/config/nav";
 import { SITE } from "@/config/site";
 import { useDemo } from "@/components/dashboard/DemoProvider";
-import { mineRows, openCases } from "@/components/dashboard/derive";
+import { inboxCount, mineRows } from "@/components/dashboard/derive";
 import { decisionsWaiting } from "@/features/metrics";
 import { DevPanel } from "./DevPanel";
 import { Ground } from "./Ground";
@@ -24,7 +24,7 @@ export function SimpleShell({ children }: { children: React.ReactNode }) {
   const mine = mineRows(ctx);
   const shipped = mine.filter((m) => m.status === "Shipped").length;
   // Badges: what is waiting on this person right now.
-  const counts = { inbox: openCases(ctx).length, decisions: decisionsWaiting(D).length };
+  const counts = { inbox: inboxCount(ctx), decisions: decisionsWaiting(D).length };
   // Profile numbers per role: what this person sent (member), what sits on their desk and what they
   // decided (leader), what waits on them (manager). A manager raises nothing, so "0 raised" is noise.
   const decided = D.cases.filter((c) => c.decided?.by === who.name).length;
