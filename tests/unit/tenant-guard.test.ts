@@ -99,3 +99,29 @@ describe("scopeViolation", () => {
     expect(err?.message).toContain("CaseEvent.findMany");
   });
 });
+
+describe("the identifying-lookup exception", () => {
+  it("lets a token be found by its globally unique hash", () => {
+    // A bearer token is the caller's whole identity: you cannot scope this by company, because
+    // which company it belongs to is what the lookup is for.
+    expect(scopeViolation("ApiToken", "findUnique", { where: { hash: "abc" } })).toBeNull();
+  });
+
+  it("does not widen into a general read of the table", () => {
+    // Only the unique column, on its own, on a single-row read.
+    expect(scopeViolation("ApiToken", "findMany", { where: { hash: "abc" } })).toBeInstanceOf(Error);
+    expect(scopeViolation("ApiToken", "findUnique", { where: { hash: "abc", name: "n8n" } })).toBeInstanceOf(Error);
+    expect(scopeViolation("ApiToken", "findFirst", { where: { name: "n8n" } })).toBeInstanceOf(Error);
+    expect(scopeViolation("ApiToken", "deleteMany", { where: { hash: "abc" } })).toBeInstanceOf(Error);
+    expect(scopeViolation("ApiToken", "update", { where: { hash: "abc" } })).toBeInstanceOf(Error);
+  });
+
+  it("is not available to other tenant tables", () => {
+    expect(scopeViolation("User", "findUnique", { where: { hash: "abc" } })).toBeInstanceOf(Error);
+    expect(scopeViolation("CaseEvent", "findUnique", { where: { id: "e1" } })).toBeInstanceOf(Error);
+  });
+
+  it("still requires the value to be present", () => {
+    expect(scopeViolation("ApiToken", "findUnique", { where: { hash: undefined } })).toBeInstanceOf(Error);
+  });
+});

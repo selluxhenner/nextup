@@ -12,6 +12,8 @@ import { APP_EVENT_TYPES } from "@/features/cases/persist";
 import { appendEventRow, deleteEventsForTargets, resetCompanyLog } from "@/lib/db/events";
 import { getDb, hasDatabase } from "@/lib/db/client";
 import { issueSession } from "@/server/issue-session";
+import { parseSeed } from "@/features/demo/parse";
+import { buildRaisedNotice, companyBaseUrl, notifyCaseRaised } from "@/server/notify-n8n";
 
 const Payload: z.ZodType<EventPayload> = z.looseObject({}) as z.ZodType<EventPayload>;
 
@@ -54,9 +56,46 @@ export async function appendEventAction(input: AppendInput): Promise<AppendOutco
   );
   if (!result.ok) return { ok: false, error: result.error };
 
+  // Tell n8n, but only after the row is safely committed, and never block on it.
+  if (type === "case.raised" && target) {
+    void notifyRaised(slug, viewer.companyId, id, target, payload);
+  }
+
   revalidatePath("/" + slug, "layout");
   revalidatePath("/", "layout"); // subdomain mode: the company is the host, so the path has no slug
   return { ok: true };
+}
+
+/** Resolve the route owner here rather than in n8n, and hand over a ready-to-send message. */
+async function notifyRaised(
+  slug: string,
+  companyId: string,
+  eventId: string,
+  caseId: string,
+  payload: EventPayload,
+): Promise<void> {
+  if (!process.env.N8N_HOOK_URL) return;
+  try {
+    const company = await getDb().company.findUnique({
+      where: { slug },
+      select: { demoDay: true, seedJson: true, users: { select: { name: true, email: true } } },
+    });
+    if (!company) return;
+    notifyCaseRaised(
+      buildRaisedNotice({
+        slug,
+        eventId,
+        caseId,
+        payload,
+        seed: parseSeed(company.seedJson),
+        people: company.users,
+        day: company.demoDay,
+        baseUrl: companyBaseUrl(slug),
+      }),
+    );
+  } catch {
+    // Same rule as the delivery itself: a raise must never fail because of the notification.
+  }
 }
 
 /** Dev panel: put this company back to its seed. Shared - it resets for everyone. */

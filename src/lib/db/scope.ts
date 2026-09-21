@@ -26,6 +26,37 @@ export const NEEDS_WHERE = new Set([
 /** Operations that must carry the company through the rows they write. */
 export const NEEDS_DATA = new Set(["create", "createMany", "createManyAndReturn"]);
 
+const isObject = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null;
+
+/**
+ * The one legitimate way to touch a tenant table without naming a company: a lookup by a column
+ * that is globally unique, where the lookup is what DETERMINES the tenant.
+ *
+ * ApiToken.hash is the only case. A bearer token is the caller's whole identity - you cannot
+ * scope the lookup by company, because which company it belongs to is exactly what you are
+ * trying to find out. It is safe because the column is unique across the whole table, so the
+ * query returns one row or none; the caller then compares that row's company to the one in the
+ * URL and answers 403 if they differ (docs/INTEGRATIONS.md: "an event for company A sent with
+ * company B's token is a 403, and that is a test").
+ *
+ * Every other ApiToken query - listing, revoking, marking used - stays scoped.
+ */
+export const IDENTIFYING_LOOKUPS: Record<string, readonly string[]> = {
+  ApiToken: ["hash"],
+};
+
+/** Operations allowed to use an identifying lookup: reads of a single row, nothing else. */
+const IDENTIFYING_OPERATIONS = new Set(["findUnique", "findUniqueOrThrow", "findFirst"]);
+
+function isIdentifyingLookup(model: string, operation: string, where: unknown): boolean {
+  const columns = IDENTIFYING_LOOKUPS[model];
+  if (!columns || !IDENTIFYING_OPERATIONS.has(operation)) return false;
+  if (!isObject(where)) return false;
+  const keys = Object.keys(where);
+  // Exactly the unique column and nothing else, so this cannot be widened into a general read.
+  return keys.length === 1 && columns.includes(keys[0]) && where[keys[0]] !== undefined;
+}
+
 export class TenantScopeError extends Error {
   constructor(model: string, operation: string) {
     super(
@@ -35,8 +66,6 @@ export class TenantScopeError extends Error {
     this.name = "TenantScopeError";
   }
 }
-
-const isObject = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null;
 
 /**
  * True when `where` pins the query to a company somewhere in its tree.
@@ -81,6 +110,7 @@ export function scopeViolation(
   const a = isObject(args) ? args : {};
 
   if (NEEDS_WHERE.has(operation) && !mentionsCompanyId(a.where)) {
+    if (isIdentifyingLookup(model, operation, a.where)) return null;
     return new TenantScopeError(model, operation);
   }
   if (NEEDS_DATA.has(operation) && !dataNamesCompany(a.data)) {

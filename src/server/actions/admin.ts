@@ -20,6 +20,7 @@ import {
   type NewPerson,
 } from "@/features/tenant/create";
 import { getDb, hasDatabase } from "@/lib/db/client";
+import { createToken } from "@/lib/db/tokens";
 import type { Role } from "@/config/roles";
 
 const ADMIN_TTL_SECONDS = 8 * 60 * 60;
@@ -183,6 +184,21 @@ export async function deleteCompanyAction(_prev: RotateState, form: FormData): P
   }
   await getDb().company.deleteMany({ where: { slug } });
   return { slug };
+}
+
+export type TokenState = { slug?: string; token?: string; error?: string };
+
+/** An API token for this company's integration endpoints. Shown once; only its hash is stored. */
+export async function createApiTokenAction(_prev: TokenState, form: FormData): Promise<TokenState> {
+  if (!(await isAdmin())) return { error: "Not signed in to the admin area." };
+  if (!hasDatabase()) return { error: "No database is configured." };
+
+  const slug = String(form.get("slug") ?? "");
+  const company = await getDb().company.findUnique({ where: { slug }, select: { id: true } });
+  if (!company) return { error: "No such company." };
+
+  const token = await createToken(company.id, "n8n", ["events:read", "events:write"]);
+  return { slug, token };
 }
 
 function parsePeople(form: FormData): NewPerson[] {
