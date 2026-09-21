@@ -59,18 +59,21 @@ export function exportSnippet(state: State): string {
 
 // Read straight from the log - these events do not change a case's state, so the reducer leaves
 // them alone; they are facts about who stands behind a case and what was said under it.
-export type Affected = { name: string; day: number };
-export type Comment = { id: string; by: string; text: string; day: number };
+export type Affected = { name: string; day: number; why?: string };
+export type Comment = { id: string; by: string; text: string; day: number; rescore: boolean };
 
 export function affectedOn(log: EventLog, caseId: string): Affected[] {
   const out: Affected[] = [];
   for (const e of log.events) {
     if (e.target !== caseId) continue;
-    if (e.type === "case.affected" && !out.some((a) => a.name === e.actor)) out.push({ name: e.actor, day: e.day });
+    if (e.type === "case.affected" && !out.some((a) => a.name === e.actor)) out.push({ name: e.actor, day: e.day, why: e.payload.why?.trim() || undefined });
     if (e.type === "case.unaffected") { const i = out.findIndex((a) => a.name === e.actor); if (i >= 0) out.splice(i, 1); }
   }
   return out;
 }
 
 export const commentsOn = (log: EventLog, caseId: string): Comment[] =>
-  log.events.filter((e) => e.target === caseId && e.type === "case.commented").map((e) => ({ id: e.id, by: e.actor, text: e.payload.text ?? "", day: e.day }));
+  log.events.filter((e) => e.target === caseId && e.type === "case.commented").map((e) => ({ id: e.id, by: e.actor, text: e.payload.text ?? "", day: e.day, rescore: !!e.payload.rescore }));
+
+// New information posted since the case was raised - each one re-evaluates the score (scoring: `updates`).
+export const rescoresOn = (log: EventLog, caseId: string): Comment[] => commentsOn(log, caseId).filter((m) => m.rescore);

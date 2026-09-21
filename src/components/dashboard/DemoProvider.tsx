@@ -33,8 +33,9 @@ export type Act = {
   answer: (id: string, text: string) => void;
   override: (id: string, proposed: string | null, chosen: string) => void;
   cosign: (ideaId: string) => boolean; // true when the co-sign was added, false when withdrawn
-  affect: (caseId: string) => boolean; // "this affects me too" - true when added, false when withdrawn
+  affect: (caseId: string, why?: string) => boolean; // "this affects me too" (+ why, from a lead) - true when added, false when withdrawn
   comment: (caseId: string, text: string) => void;
+  rescore: (caseId: string, text: string) => void; // new information: the score is re-evaluated with it
   askIdea: (ideaId: string, text: string) => void;
   approve: (ideaId: string, team: string[], note: string) => void;
   fund: (ideaId: string, team: string[], note: string) => void;
@@ -179,16 +180,17 @@ export function DemoProvider({ tenant, seed, children }: Props) {
       emit(already ? "idea.uncosigned" : "idea.cosigned", ideaId);
       return !already;
     },
-    affect: (caseId) => {
+    affect: (caseId, why) => {
       // Decided against the log as it is at that moment, so a double click toggles cleanly.
       let added = true;
       updateLog(slug, (prev) => {
         added = !affectedOn(prev, caseId).some((a) => a.name === actor);
-        return appendEvent(prev, { type: added ? "case.affected" : "case.unaffected", actor, target: caseId });
+        return appendEvent(prev, { type: added ? "case.affected" : "case.unaffected", actor, target: caseId, payload: added && why ? { why } : undefined });
       });
       return added;
     },
     comment: (caseId, text) => emit("case.commented", caseId, { text }),
+    rescore: (caseId, text) => emit("case.commented", caseId, { text, rescore: true }),
     askIdea: (ideaId, text) => emit("idea.asked", ideaId, { text }),
     approve: (ideaId, team, note) => emit("idea.approved", ideaId, { team, note }),
     fund: (ideaId, team, note) => emit("idea.funded", ideaId, { team, note }),

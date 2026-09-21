@@ -23,8 +23,20 @@ export function mineRows(ctx: DemoContext): MineRow[] {
     .sort((a, b) => b.sortDay - a.sortDay);
 }
 
+// A team leader's branch: cases raised in their department (the seed's fromDept starts with its
+// name), by someone who reports to them, by themselves, or sitting on their desk. Everyone else
+// sees the whole company.
+export function inBranch(ctx: DemoContext, c: ReducedCase): boolean {
+  if (ctx.role !== "leader") return true;
+  const me = ctx.persona.who.name;
+  const dept = ctx.deptName(ctx.persona.role.dept);
+  const reports = ctx.seed.people.filter((p) => p.reportsTo === me).map((p) => p.name);
+  const handles = ctx.seed.personas.filter((r) => reports.includes(r.who.name) && r.who.handle).map((r) => r.who.handle as string);
+  return c.from === me || onDesk(c, me) || c.fromDept.startsWith(dept) || reports.includes(c.from) || handles.includes(c.from);
+}
+
 // ── problems / ideas in the current department scope, with the list views' sort orders ──
-import type { ReducedIdea, ReducedProblem } from "@/features/cases/reducer";
+import type { ReducedCase, ReducedIdea, ReducedProblem } from "@/features/cases/reducer";
 import { criteriaCount, upsideNum } from "@/features/metrics";
 
 export const problemOf = (ctx: DemoContext, i: ReducedIdea) => ctx.S.problems.find((p) => p.id === i.problem);

@@ -11,9 +11,9 @@ export type CaseEventType =
   | "case.building" // { days, expected? }            (seed history)
   | "case.shipped" // { outcome, outcomeNote }        (seed history)
   | "case.override" // { proposed, chosen }  (route ids)
-  | "case.affected" // -   the actor says the problem hits them too (read from the log by selectors; the reducer ignores it)
+  | "case.affected" // { why? }  the actor says the problem hits them too - a lead says why (read from the log by selectors; the reducer ignores it)
   | "case.unaffected" // - withdraws that
-  | "case.commented" // { text }
+  | "case.commented" // { text, rescore? }  rescore: the text is new information and corrects the score
   | "idea.cosigned" // -
   | "idea.uncosigned" // -
   | "idea.asked" // { text }
@@ -36,6 +36,7 @@ export type EventPayload = {
   team?: string[];
   affected?: string[]; // names the raiser says are hit by the problem too
   attachments?: number; // screenshots attached when raised (the files stay in the browser; only the count is a fact)
+  rescore?: boolean; // on case.commented: the comment is new information, the score is re-evaluated with it
   by?: number;
 };
 

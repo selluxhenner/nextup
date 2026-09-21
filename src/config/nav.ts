@@ -29,6 +29,7 @@ export const NAV_SIMPLE: Record<Role, SimpleNavItem[]> = {
   ],
   manager: [
     { label: "Overview", href: "/manager", count: "decisions" },
+    { label: "Inbox", href: "/leader", count: "inbox" }, // tentative: what sits on the manager's own desk (escalations, routes they own)
     { label: "Dashboard", href: "/dashboard" },
   ],
 };
