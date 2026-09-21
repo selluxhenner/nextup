@@ -4,12 +4,11 @@
 //
 // Two steps on purpose. The code is checked before any name or address is returned, so the
 // employee list of a pilot customer is not readable by anyone who guesses the subdomain.
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { ROLE_HOME, type Role } from "@/config/roles";
 import { verifyAccessCode } from "@/features/auth/access-code";
-import { SESSION_COOKIE, SESSION_TTL_SECONDS, signSession } from "@/features/auth/cookie";
 import { getDb, hasDatabase } from "@/lib/db/client";
+import { clearSession, issueSession } from "@/server/issue-session";
 
 export type LoginPerson = { id: string; name: string; role: Role; line: string };
 
@@ -83,33 +82,8 @@ export async function signIn(_prev: LoginState, form: FormData): Promise<LoginSt
     };
   }
 
-  const secret = process.env.AUTH_SECRET;
-  if (!secret) return { step: "code", error: "AUTH_SECRET is not configured on this server." };
-
   const role = user.role as Role;
-  const token = signSession(
-    {
-      v: 1,
-      cid: company.id,
-      slug: company.slug,
-      uid: user.id,
-      name: user.name,
-      handle: user.handle,
-      role,
-      exp: Math.floor(Date.now() / 1000) + SESSION_TTL_SECONDS,
-    },
-    secret,
-  );
-
-  (await cookies()).set(SESSION_COOKIE, token, {
-    httpOnly: true,
-    sameSite: "lax",
-    // Scoped to this exact host. Never ".<root>" - that would let one company's subdomain read
-    // another's cookie, which is precisely the isolation we are claiming.
-    path: "/",
-    secure: process.env.COOKIE_SECURE === "true",
-    maxAge: SESSION_TTL_SECONDS,
-  });
+  await issueSession(company.id, company.slug, user);
 
   const home = ROLE_HOME[role];
   const target = next.startsWith("/") && !next.startsWith("//") ? next : home;
@@ -117,7 +91,7 @@ export async function signIn(_prev: LoginState, form: FormData): Promise<LoginSt
 }
 
 export async function signOut(slug: string) {
-  (await cookies()).delete(SESSION_COOKIE);
+  await clearSession();
   redirect(prefix(slug) + "/login");
 }
 

@@ -5,12 +5,25 @@
 //
 // Rule carried over: UI code changes domain state only through `act.*`, which appends one
 // event as the current persona. Everything shown is reduce(seed, log) - see features/cases.
-// The log and the dev-panel settings persist in localStorage (src/lib/demo-log.ts); the
-// server renders with an empty log and `ready` false, the browser swaps in what it remembers.
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+// Two modes, one context:
+//   server mode (a `viewer` prop, i.e. a real session) - the log comes from Postgres, every
+//     act.* appends through a server action, and everyone looking at the company sees it.
+//   local mode (no viewer) - the original localStorage demo, kept because `npm run dev`, the CI
+//     build and the no-database path all have to keep working.
+// The dev-panel settings (demo on/off, department) stay in localStorage either way: they are
+// per-viewer preferences, not facts.
+//
+// Two constraints shaped this file, both load-bearing:
+//   * act.raise/cosign/affect are consumed SYNCHRONOUSLY for their return values
+//     (RaiseView passes the new id straight to saveShots). So emit() pushes onto a pending queue
+//     synchronously and only then fires the server action.
+//   * `ready` must stay false on the server and flip after hydration, or ten views that gate on
+//     it start rendering dates during SSR and every page hydration-mismatches at once.
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore, useTransition } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { canAccess, ROLE_HOME, type Role } from "@/config/roles";
-import { appendEvent, newId, type EventLog, type EventPayload, type CaseEventType } from "@/features/cases/events";
+import { appendEvent, emptyLog, newId, type CaseEvent, type EventLog, type EventPayload } from "@/features/cases/events";
+import type { AppEventType } from "@/features/cases/persist";
 import { reduce, type State } from "@/features/cases/reducer";
 import { dayFormatter, type DayFmt } from "@/features/cases/rows";
 import { affectedOn, exportSnippet } from "@/features/cases/selectors";
@@ -19,6 +32,8 @@ import { counts, demoData, type Counts, type DemoData } from "@/features/metrics
 import { clearPrefs, getServerSnapshot, getSnapshot, resetLog, setPrefs, subscribe, updateLog } from "@/lib/demo-log";
 import { clearShots, dropShots } from "@/lib/shots";
 import { deptName as deptNameOf } from "@/lib/utils/format";
+import { appendEventAction, deleteAddedAction, resetCompanyAction, switchUserAction } from "@/server/actions/events";
+import { signOut } from "@/server/actions/auth";
 
 export type Pop = "search" | "decisions" | "me" | "sort" | "filter";
 export type SheetKind = "no" | "ask" | "reply" | "hand" | "assign" | "askIdea";
@@ -81,24 +96,74 @@ function roleFromPath(path: string): Role {
 
 const iniOf = (name: string) => name.split(" ").map((w) => w[0]).join("").slice(0, 2);
 
-// What the shell knows about the company: slug + name for chrome, the user list only to show an email in the profile menu.
-export type TenantInfo = { slug: string; name: string; users?: { name: string; email: string }[] };
-type Props = { tenant: TenantInfo; seed: Seed; children: React.ReactNode };
+// What the shell knows about the company: slug + name for chrome, and the people - used for the
+// email in the profile menu, and (in server mode) to switch person from the dev panel.
+export type TenantInfo = {
+  slug: string;
+  name: string;
+  users?: { id?: string; name: string; email: string; role?: Role }[];
+};
 
-export function DemoProvider({ tenant, seed, children }: Props) {
+/** The signed-in person. Present only in server mode. */
+export type ViewerInfo = { userId: string; name: string; handle: string | null; role: Role; line?: string };
+
+type Props = {
+  tenant: TenantInfo;
+  seed: Seed;
+  /** Server mode: the company's log out of Postgres. */
+  initialLog?: EventLog;
+  /** Server mode: who is signed in. Absent means the localStorage demo. */
+  viewer?: ViewerInfo | null;
+  children: React.ReactNode;
+};
+
+export function DemoProvider({ tenant, seed, initialLog, viewer, children }: Props) {
+  const serverMode = Boolean(viewer);
   const router = useRouter();
+  const router_refresh = router.refresh;
   const pathname = usePathname();
   const slug = tenant.slug;
   const appPath = pathname.startsWith("/" + slug) ? pathname.slice(slug.length + 1) || "/" : pathname;
 
-  // What this browser remembers: the event log and the dev-panel settings.
+  // What this browser remembers: the dev-panel settings, and (local mode only) the event log.
   const persisted = useSyncExternalStore(subscribe, () => getSnapshot(slug), getServerSnapshot);
+
+  // Client-only, in BOTH modes: false during SSR, true once this browser has hydrated. Ten views
+  // gate their date rendering on it, so making it true on the server would hydration-mismatch
+  // every page at once. The external store already has exactly this shape, so no effect is needed.
   const ready = persisted.loaded;
-  const log = persisted.log;
+
+  // Server mode: events this browser just appended, held until the server echoes them back.
+  // Appended synchronously so act.raise() can still return the new id to its caller.
+  const [pending, setPending] = useState<CaseEvent[]>([]);
+  const [, startTransition] = useTransition();
+
+  // Drop optimistic events once the server's copy contains them. Adjusted during render rather
+  // than in an effect - React supports this for "derive state from a changed prop", and it avoids
+  // the extra commit an effect would cost.
+  const [seenLog, setSeenLog] = useState(initialLog);
+  if (serverMode && initialLog !== seenLog) {
+    setSeenLog(initialLog);
+    const have = new Set((initialLog?.events ?? []).map((e) => e.id));
+    setPending((p) => (p.some((e) => have.has(e.id)) ? p.filter((e) => !have.has(e.id)) : p));
+  }
+
+  const log = useMemo<EventLog>(() => {
+    if (!serverMode) return persisted.log;
+    const base = initialLog ?? emptyLog();
+    const have = new Set(base.events.map((e) => e.id));
+    const extra = pending.filter((e) => !have.has(e.id));
+    if (extra.length === 0) return base;
+    const dayDelta = extra.reduce((n, e) => (e.type === "day.advanced" ? n + (e.payload.by ?? 1) : n), 0);
+    return { events: base.events.concat(extra), day: base.day + dayDelta };
+  }, [serverMode, persisted.log, initialLog, pending]);
+
   // The guess is made once per page load, so following a link (/raise -> /cases/x) keeps the persona.
   const [guessedRole] = useState(() => roleFromPath(appPath));
-  const role: Role = persisted.prefs.role ?? guessedRole;
-  const leadAs = persisted.prefs.leadAs ?? null;
+  // Server mode: the role is the session's, not a client preference - that is the whole point of
+  // enforcing it in proxy.ts.
+  const role: Role = viewer ? viewer.role : (persisted.prefs.role ?? guessedRole);
+  const leadAs = serverMode ? null : (persisted.prefs.leadAs ?? null);
   const demo = persisted.prefs.demo ?? true;
   const dept = persisted.prefs.dept ?? "PRD";
 
@@ -115,6 +180,17 @@ export function DemoProvider({ tenant, seed, children }: Props) {
   useEffect(() => {
     if (ready && !canAccess(role, appPath)) router.replace("/" + slug + ROLE_HOME[role]);
   }, [ready, role, appPath, router, slug]);
+
+  // Server mode: pick up what other people did. Without this, two testers each see only their
+  // own writes until they reload by hand - which is the whole thing this change exists to fix.
+  // Paused while the tab is hidden so a forgotten tab does not poll all afternoon.
+  useEffect(() => {
+    if (!serverMode) return;
+    const tick = () => { if (document.visibilityState === "visible") router_refresh(); };
+    const timer = setInterval(tick, 8000);
+    document.addEventListener("visibilitychange", tick);
+    return () => { clearInterval(timer); document.removeEventListener("visibilitychange", tick); };
+  }, [serverMode, router_refresh]);
 
   // ⌘K / Ctrl+K focuses the search box; Escape closes whatever is open.
   useEffect(() => {
@@ -144,6 +220,15 @@ export function DemoProvider({ tenant, seed, children }: Props) {
   // panel -> "inbox of"), so a hand-over or an escalation can be followed into the other inbox.
   const persona = useMemo(() => {
     const rp = seed.personas.find((r) => r.id === role) ?? seed.personas[seed.personas.length - 1];
+    // Server mode: the person is whoever is signed in, not a seed persona. Their name has to
+    // match a name used in the company's seed, or derive.ts matches nothing - the admin
+    // create-company action warns about that.
+    if (viewer) {
+      return {
+        role: rp,
+        who: { name: viewer.name, ini: iniOf(viewer.name), line: viewer.line || rp.who.line, handle: viewer.handle },
+      };
+    }
     if (rp.id !== "leader" || !leadAs || leadAs === rp.who.name) return { role: rp, who: rp.who };
     const r = seed.routes.find((x) => x.owner.name === leadAs);
     const b = seed.buddies.find((x) => x.name === leadAs);
@@ -151,7 +236,7 @@ export function DemoProvider({ tenant, seed, children }: Props) {
     const pDept = r ? r.owner.dept : bDept ?? rp.dept;
     const line = r ? r.owner.role + " · " + deptName(r.owner.dept) : b ? "Team lead · " + b.dept : "Deputy · " + deptName(pDept);
     return { role: { ...rp, dept: pDept }, who: { name: leadAs, ini: iniOf(leadAs), line, handle: null } };
-  }, [seed, role, leadAs, deptName]);
+  }, [seed, role, leadAs, deptName, viewer]);
 
   // Who is acting: the employee posts under their handle, everyone else by name.
   const actor = persona.role.id === "member" && persona.who.handle ? persona.who.handle : persona.who.name;
@@ -163,11 +248,35 @@ export function DemoProvider({ tenant, seed, children }: Props) {
     toastTimer.current = setTimeout(() => setToast(null), 3600);
   }, []);
 
-  const emit = useCallback((type: CaseEventType, target: string | null, payload?: EventPayload) => {
-    updateLog(slug, (prev) => appendEvent(prev, { type, actor, target, payload }));
-  }, [actor, slug]);
+  // One append. Local mode writes straight to localStorage; server mode renders the event
+  // optimistically (synchronously, so act.raise can return its id) and then persists it.
+  const emit = useCallback((type: AppEventType, target: string | null, payload?: EventPayload, id?: string) => {
+    if (!serverMode) {
+      updateLog(slug, (prev) => appendEvent(prev, { type, actor, target, payload }));
+      return;
+    }
+    const ev: CaseEvent = {
+      id: id ?? newId("e"),
+      ts: Date.now(),
+      day: log.day,
+      type,
+      actor,
+      target,
+      payload: payload ?? {},
+    };
+    setPending((p) => p.concat([ev]));
+    startTransition(async () => {
+      const res = await appendEventAction({ slug, id: ev.id, type, target, payload: ev.payload });
+      if (!res.ok) {
+        setPending((p) => p.filter((x) => x.id !== ev.id));
+        showToast(res.error);
+      }
+      router_refresh();
+    });
+  }, [serverMode, slug, actor, log.day, router_refresh, showToast]);
 
   const act = useMemo<Act>(() => ({
+    // Stays synchronous and still returns the id: RaiseView hands it straight to saveShots().
     raise: (p) => { const id = newId("c"); emit("case.raised", id, p); return id; },
     read: (id) => emit("case.read", id),
     decide: (id, answer, reason, note) => emit("case.decided", id, { answer, reason, note }),
@@ -182,6 +291,11 @@ export function DemoProvider({ tenant, seed, children }: Props) {
     },
     affect: (caseId, why) => {
       // Decided against the log as it is at that moment, so a double click toggles cleanly.
+      if (serverMode) {
+        const added = !affectedOn(log, caseId).some((a) => a.name === actor);
+        emit(added ? "case.affected" : "case.unaffected", caseId, added && why ? { why } : undefined);
+        return added;
+      }
       let added = true;
       updateLog(slug, (prev) => {
         added = !affectedOn(prev, caseId).some((a) => a.name === actor);
@@ -195,7 +309,7 @@ export function DemoProvider({ tenant, seed, children }: Props) {
     approve: (ideaId, team, note) => emit("idea.approved", ideaId, { team, note }),
     fund: (ideaId, team, note) => emit("idea.funded", ideaId, { team, note }),
     advanceDay: (by) => emit("day.advanced", null, { by: by ?? 1 }),
-  }), [emit, S.ideas, actor, slug]);
+  }), [emit, S.ideas, actor, slug, serverMode, log]);
 
   const href = useCallback((path: string) => "/" + slug + path, [slug]);
   // Close the popovers and the mobile menu; the dev panel stays open so settings can be changed in a row.
@@ -203,13 +317,39 @@ export function DemoProvider({ tenant, seed, children }: Props) {
 
   const setRole = useCallback((r: Role) => {
     const rp = seed.personas.find((x) => x.id === r);
+    // Server mode: the role comes from the session, so "viewing as" has to actually become
+    // somebody else. Only allowed while the company is in demo stage - the action checks.
+    if (serverMode) {
+      const target = tenant.users?.find((u) => u.role === r && u.id);
+      if (!target?.id) { showToast("No " + r + " in this company to switch to."); return; }
+      closeAll();
+      startTransition(async () => {
+        const res = await switchUserAction(slug, target.id!);
+        if (!res.ok) { showToast(res.error); return; }
+        router.push(href(ROLE_HOME[r]));
+        router_refresh();
+      });
+      return;
+    }
     setPrefs(slug, { role: r, leadAs: null, dept: rp?.dept ?? dept });
     closeAll();
     router.push(href(ROLE_HOME[r]));
-  }, [seed.personas, slug, dept, closeAll, router, href]);
+  }, [seed.personas, slug, dept, closeAll, router, href, serverMode, tenant.users, showToast, router_refresh]);
 
   // Dev panel: look at the team-leader screens as another desk holder.
   const setLeadAs = useCallback((name: string) => {
+    if (serverMode) {
+      const target = tenant.users?.find((u) => u.name === name && u.id);
+      if (!target?.id) { showToast(name + " is seed data, not a person who can sign in here."); return; }
+      closeAll();
+      startTransition(async () => {
+        const res = await switchUserAction(slug, target.id!);
+        if (!res.ok) { showToast(res.error); return; }
+        router.push(href(ROLE_HOME.leader));
+        router_refresh();
+      });
+      return;
+    }
     const lead = seed.personas.find((r) => r.id === "leader");
     const r = seed.routes.find((x) => x.owner.name === name);
     const b = seed.buddies.find((x) => x.name === name);
@@ -217,33 +357,56 @@ export function DemoProvider({ tenant, seed, children }: Props) {
     setPrefs(slug, { role: "leader", leadAs: lead && name === lead.who.name ? null : name, dept: nextDept });
     closeAll();
     router.push(href(ROLE_HOME.leader));
-  }, [seed, slug, closeAll, router, href]);
+  }, [seed, slug, closeAll, router, href, serverMode, tenant.users, showToast, router_refresh]);
 
   const resetDemo = useCallback(() => {
-    resetLog(slug);
     clearShots(slug);
-    setPrefs(slug, { leadAs: null });
     setQ(""); setPop(null); setSheet(null);
+    if (serverMode) {
+      // Shared: this resets the company for everyone looking at it, not just this browser.
+      startTransition(async () => {
+        const res = await resetCompanyAction(slug);
+        showToast(res.ok ? "Demo reset for everyone in this company." : res.error);
+        router_refresh();
+      });
+      return;
+    }
+    resetLog(slug);
+    setPrefs(slug, { leadAs: null });
     showToast("Demo state reset");
-  }, [slug, showToast]);
+  }, [slug, showToast, serverMode, router_refresh]);
 
   // Dev panel: drop the cases raised in this browser (and everything done to them); seed cases and
   // what was done to them stay. A log purge, not an event - it only exists for the demo.
   const deleteAdded = useCallback(() => {
     const ids = new Set(S.cases.filter((c) => !c.seed).map((c) => c.id));
     if (!ids.size) { showToast("Nothing to delete — every case here is seed data."); return; }
-    updateLog(slug, (prev) => ({ ...prev, events: prev.events.filter((e) => !(e.target && ids.has(e.target))) }));
+    const said = "Deleted " + ids.size + (ids.size === 1 ? " case" : " cases") + " you added. Seed data untouched.";
     dropShots(slug, ids);
     setSheet(null);
-    showToast("Deleted " + ids.size + (ids.size === 1 ? " case" : " cases") + " you added. Seed data untouched.");
-  }, [S, slug, showToast]);
+    if (serverMode) {
+      startTransition(async () => {
+        const res = await deleteAddedAction(slug, [...ids]);
+        showToast(res.ok ? said : res.error);
+        router_refresh();
+      });
+      return;
+    }
+    updateLog(slug, (prev) => ({ ...prev, events: prev.events.filter((e) => !(e.target && ids.has(e.target))) }));
+    showToast(said);
+  }, [S, slug, showToast, serverMode, router_refresh]);
 
   // Log out: forget the persona in this browser and go back to the company login. Demo log stays.
   const logout = useCallback(() => {
     clearPrefs(slug);
     closeAll(); setSheet(null);
+    if (serverMode) {
+      // Clears the cookie server-side and redirects; a client-side push would leave the session.
+      startTransition(async () => { await signOut(slug); });
+      return;
+    }
     router.push(href("/login"));
-  }, [slug, closeAll, router, href]);
+  }, [slug, closeAll, router, href, serverMode]);
 
   // Session-created cases as seed rows (with their history) for src/features/demo/seed.ts.
   const copySnippet = useCallback(() => {
