@@ -14,11 +14,21 @@
 //   - $queryRaw / $executeRaw bypass it entirely.
 //   - The real fix is Postgres row-level security, which docs/INTEGRATIONS.md already names as the
 //     next step. This guard is the cheap 90% until then.
+import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@prisma/client";
 import { scopeViolation } from "./scope";
 
 function createClient() {
-  return new PrismaClient().$extends({
+  // Prisma 7 has no built-in engine: the client talks to Postgres through a driver adapter, and
+  // `new PrismaClient()` with no adapter throws. This is also why the runtime image needs no
+  // native engine binary and no OpenSSL gymnastics.
+  const connectionString = process.env.DATABASE_URL;
+  if (!connectionString) {
+    throw new Error(
+      "DATABASE_URL is not set. Callers should check hasDatabase() and fall back to the demo tenant.",
+    );
+  }
+  return new PrismaClient({ adapter: new PrismaPg({ connectionString }) }).$extends({
     name: "tenant-guard",
     query: {
       $allModels: {
