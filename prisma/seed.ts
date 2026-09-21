@@ -7,18 +7,14 @@
 //
 // It ports src/features/demo/seed.ts (itself the port of legacy/demo/js/data.js) into acme's
 // seedJson, and creates that company's three people from the demo table.
-import { randomBytes, scryptSync } from "node:crypto";
+import { randomBytes } from "node:crypto";
+import { hashAccessCode } from "../src/features/auth/access-code";
 import { DEMO_COMPANIES } from "../src/features/tenant/demo-companies";
 import { seedTemplate } from "../src/features/demo";
 import { toSeedJson } from "../src/features/demo/parse";
 import { getDb } from "../src/lib/db/client";
 
-/** scrypt$<saltHex>$<hashHex> - the format Company.accessCodeHash carries. */
-function hashCode(code: string): string {
-  const salt = randomBytes(16);
-  const hash = scryptSync(code, salt, 64);
-  return `scrypt$${salt.toString("hex")}$${hash.toString("hex")}`;
-}
+const hashCode = hashAccessCode;
 
 const iniOf = (name: string) => name.split(" ").map((w) => w[0]).join("").slice(0, 2);
 
@@ -34,6 +30,9 @@ async function main() {
       mark: demo.mark,
       anonymousHandles: demo.anonymousHandles,
       seedJson: toSeedJson(seedTemplate("demo")) as object,
+      // Only when asked explicitly. A re-run must not silently invalidate a code people are
+      // already using to get in.
+      ...(process.env.SEED_ACCESS_CODE ? { accessCodeHash: hashCode(accessCode) } : {}),
     },
     create: {
       slug: demo.slug,
