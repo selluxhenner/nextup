@@ -1,0 +1,123 @@
+# The whole stack, one file, laptop and VPS alike. Only .env differs between them.
+#
+#   laptop : APP_DOMAIN=localhost  CADDYFILE=Caddyfile.dev  PUBLIC_SCHEME=http   COOKIE_SECURE=false
+#   VPS    : APP_DOMAIN=nextup.serviweb.ch  CADDYFILE=Caddyfile  PUBLIC_SCHEME=https  COOKIE_SECURE=true
+#
+# docs/INTEGRATIONS.md asks that only DATABASE_URL, N8N_BASE_URL and the domain differ between
+# environments. That is what this is.
+#
+# NOTE: the file is named compose.yml, not docker-compose.override.yml - .gitignore swallows
+# docker-compose.override.yml and *.local.yml, and .gitignore is not ours to edit.
+
+name: nextup
+
+services:
+  db:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: nextup
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: nextup
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nextup -d nextup"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # One-shot. `app` waits for this to finish, so a migration can never be forgotten on deploy.
+  migrate:
+    build:
+      context: .
+      dockerfile: ops/Dockerfile
+      target: build
+    command: ["npx", "prisma", "migrate", "deploy"]
+    environment:
+      DATABASE_URL: postgresql://nextup:${POSTGRES_PASSWORD}@db:5432/nextup
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  app:
+    build:
+      context: .
+      dockerfile: ops/Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://nextup:${POSTGRES_PASSWORD}@db:5432/nextup
+      AUTH_SECRET: ${AUTH_SECRET:?set AUTH_SECRET in .env}
+      ADMIN_ACCESS_CODE: ${ADMIN_ACCESS_CODE:?set ADMIN_ACCESS_CODE in .env}
+      TENANT_MODE: ${TENANT_MODE:-subdomain}
+      APP_DOMAIN: ${APP_DOMAIN:-localhost}
+      PUBLIC_SCHEME: ${PUBLIC_SCHEME:-http}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      # In-network only; n8n is never called over the internet.
+      N8N_HOOK_URL: ${N8N_HOOK_URL:-http://n8n:5678/webhook/nextup/case-raised}
+      N8N_HOOK_TOKEN: ${N8N_HOOK_TOKEN:-}
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+      start_period: 20s
+
+  n8n:
+    image: n8nio/n8n:latest
+    restart: unless-stopped
+    environment:
+      N8N_HOST: n8n.${APP_DOMAIN:-localhost}
+      WEBHOOK_URL: ${PUBLIC_SCHEME:-http}://n8n.${APP_DOMAIN:-localhost}/
+      N8N_PROXY_HOPS: "1"
+      GENERIC_TIMEZONE: ${TZ:-Europe/Zurich}
+      N8N_DIAGNOSTICS_ENABLED: "false"
+      # Where workflows call back to. Service name, not a public URL.
+      NEXTUP_BASE: http://app:3000
+    volumes:
+      - n8ndata:/home/node/.n8n
+      - ./ops/n8n:/data/workflows:ro
+    depends_on:
+      app:
+        condition: service_healthy
+
+  # Catches every mail the demo sends, so nothing leaves the box and the team can watch one
+  # inbox at mail.<domain> instead of configuring real SMTP for a pilot.
+  mailpit:
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    volumes:
+      - maildata:/data
+    environment:
+      MP_DATABASE: /data/mailpit.db
+
+  caddy:
+    build:
+      context: ops/caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./ops/caddy/${CADDYFILE:-Caddyfile.dev}:/etc/caddy/Caddyfile:ro
+      - caddydata:/data
+      - caddyconfig:/config
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:-localhost}
+      ACME_EMAIL: ${ACME_EMAIL:-}
+      HOSTTECH_API_TOKEN: ${HOSTTECH_API_TOKEN:-}
+    depends_on:
+      - app
+
+volumes:
+  pgdata:
+  n8ndata:
+  maildata:
+  caddydata:
+  caddyconfig:

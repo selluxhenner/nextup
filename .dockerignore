@@ -1,0 +1,13 @@
+# Keep the build context small and free of anything host-specific.
+node_modules
+.next
+.git
+.github
+legacy
+tests
+docs
+data
+*.local.*
+.env
+.env.*
+!.env.example

@@ -1,0 +1,22 @@
+# Laptop. Plain HTTP, no ACME, no certificates to trust.
+#
+# Chrome, Edge and Firefox resolve *.localhost to 127.0.0.1 natively (RFC 6761), so
+# http://acme.localhost works with no DNS and no /etc/hosts edit.
+# Safari and curl do NOT - see docs/DEPLOY.md for the one-line workaround.
+{
+	auto_https off
+}
+
+http://{$APP_DOMAIN}, http://*.{$APP_DOMAIN} {
+	@n8n host n8n.{$APP_DOMAIN}
+	@mail host mail.{$APP_DOMAIN}
+	handle @n8n {
+		reverse_proxy n8n:5678
+	}
+	handle @mail {
+		reverse_proxy mailpit:8025
+	}
+	handle {
+		reverse_proxy app:3000
+	}
+}
