@@ -13,7 +13,7 @@ export default async function AppLayout({ children, params }: { children: React.
   // Every stray single-segment URL (/favicon.ico, typos) lands here - 404 it ourselves.
   const tenant = await findTenant(company);
   if (!tenant) notFound();
-  const seed = seedFor(tenant.slug);
+  const seed = await seedFor(tenant.slug);
   return (
     <DemoProvider tenant={{ slug: tenant.slug, name: tenant.name, users: tenant.users.map((u) => ({ name: u.name, email: u.email })) }} seed={seed}>
       <AppShell>{children}</AppShell>
