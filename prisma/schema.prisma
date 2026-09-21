@@ -1,0 +1,156 @@
+// The server-side store. Phase 2 of docs/PLAN.md; the tables docs/DATA_MODEL.md asks for, minus
+// the ones the demo seed still covers (see below).
+//
+// Deliberate scope: only what has to be SHARED between people or QUERIED lives here. The rich
+// per-company content - departments, the org chart, the routing table, problems, ideas,
+// initiatives, seed cases - stays as one `Seed` object in Company.seedJson, because
+// src/features/cases/reducer.ts takes `reduce(seed, log)` and needs that shape verbatim.
+// Normalising it would be weeks of work and would buy nothing the pilot needs.
+//
+// Note for Prisma 7: the datasource carries no `url`. Connection details live in
+// prisma7.config.ts - `url = env("DATABASE_URL")` here is a validation error since v7.
+
+generator client {
+  // The classic generator: emits into node_modules/@prisma/client, so `@prisma/client` stays a
+  // plain bare import. The newer "prisma-client" provider emits .ts into a path we would have to
+  // add to .gitignore, which is Kevin's file. Worth revisiting when Prisma 8 lands.
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// One tenant. `slug` is the [company] URL segment and the subdomain label.
+model Company {
+  id   String @id @default(cuid())
+  slug String @unique
+  name String
+  mark String @default("")
+
+  // Per-company product rules (docs/PLAN.md "decisions before Phase 2", #3).
+  anonymousHandles Boolean @default(true)
+
+  // demo | sandbox | pilot | live - docs/INTEGRATIONS.md "Stages". A customer's phase is a flag
+  // set, not a branch.
+  stage String @default("demo")
+
+  // scrypt$<saltHex>$<hashHex>. The pilot signs in with a per-company code, not passwords.
+  accessCodeHash String
+
+  // The demo clock, and the reason it is a column rather than a derived value: reducer.ts reads
+  // `log.day` directly (`const day = log.day | 0`) and never replays day.advanced. So EventLog.day
+  // has to be materialised somewhere, and it is here. A day.advanced row still gets written - it
+  // is the audit trail - and it bumps this in the same transaction.
+  demoDay Int @default(0)
+
+  // One `Seed` (src/features/demo/types.ts), verbatim. Cloned from a template when the company is
+  // created in /admin.
+  seedJson Json
+
+  createdAt DateTime @default(now())
+
+  config CompanyConfig?
+  users  User[]
+  events CaseEvent[]
+  tokens ApiToken[]
+}
+
+// Which integrations are on for this company. docs/INTEGRATIONS.md: flipped only by an event, so
+// the change is a fact with an actor, not a silent edit.
+model CompanyConfig {
+  companyId String  @id
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  aiRouting     Boolean @default(false)
+  n8n           Boolean @default(false)
+  notifications Boolean @default(false)
+  demoData      Boolean @default(true)
+}
+
+// A person who can sign in. `role` is a plain String, not an enum, because the three roles are
+// data in src/config/roles.ts (Kevin's file) and an enum here would be a second source of truth.
+model User {
+  id        String @id @default(cuid())
+  companyId String
+
+  name String
+  // Must match a name used in the company's seedJson (a persona, a route owner, or a row in
+  // people[]) or derive.ts's visibleTo()/inboxFor() match nothing and the inbox renders empty
+  // with no error. The admin create-company action checks this and warns.
+
+  email String
+  role  String // manager | leader | member - see src/config/roles.ts
+  dept  String @default("")
+  line  String @default("") // "Team lead · Production, 4-series" - persona.who.line
+  ini   String @default("")
+
+  handle String? // anonymous handle for members, e.g. "Anonymous #4471"
+
+  createdAt DateTime @default(now())
+
+  company Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  events  CaseEvent[]
+
+  @@unique([companyId, email])
+  @@index([companyId, name])
+}
+
+// The event log - one row per appended fact. "Events, not edits": nothing here is ever updated.
+//
+// What is NOT in this table: seed history. Those events live inside seedJson (SeedCase.seedEvents)
+// and reducer.ts synthesises them with seed:true before replaying these rows. Keeping them out
+// means "reset this company" is a delete of these rows and nothing else.
+model CaseEvent {
+  // Minted by the client (newId("e")) so an optimistic UI can dedupe, and so a retried server
+  // action collides on the primary key instead of writing a second row.
+  id String @id
+
+  // The cursor for GET /api/[company]/events?since=. Int, not BigInt: BigInt does not survive
+  // JSON.stringify and would leak into the route handler and the client.
+  seq Int @unique @default(autoincrement())
+
+  companyId String
+
+  ts  DateTime @default(now())
+  day Int // Company.demoDay when this was written - matches appendEvent(), which stamps the day
+  // it left, before day.advanced moves the clock.
+
+  type        String // CaseEventType - src/features/cases/events.ts
+  actor       String // display name or handle; what reduce() reads
+  actorUserId String? // real identity behind the actor; null for "system:n8n"
+  targetId    String? // case id, idea id, or null (day.advanced)
+  payload     Json
+
+  source String  @default("app") // app | n8n | admin
+  idemKey String? // integration idempotency key; a replay is a 200 with no new row
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  actorRef User?  @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  // Ordering is by seq, never by ts: ts ties at millisecond resolution and the reducer is
+  // order-sensitive (a hand-over then an answer is not the same as the reverse).
+  @@index([companyId, seq])
+  @@index([companyId, targetId])
+  // Postgres treats NULLs as distinct, so the many rows with no idemKey do not collide.
+  @@unique([companyId, idemKey])
+}
+
+// A bearer token for one company's integration endpoints. docs/INTEGRATIONS.md: a token for
+// company A used against company B is a 403, and that is a test.
+model ApiToken {
+  id        String @id @default(cuid())
+  companyId String
+
+  name   String
+  hash   String   @unique // sha256(raw token), hex. The raw token is shown once and never stored.
+  scopes String[] // ["events:read", "events:write"]
+
+  expiresAt  DateTime?
+  lastUsedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+}
