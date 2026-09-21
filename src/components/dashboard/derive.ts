@@ -23,16 +23,17 @@ export function mineRows(ctx: DemoContext): MineRow[] {
     .sort((a, b) => b.sortDay - a.sortDay);
 }
 
-// A team leader's branch: cases raised in their department (the seed's fromDept starts with its
-// name), by someone who reports to them, by themselves, or sitting on their desk. Everyone else
-// sees the whole company.
-export function inBranch(ctx: DemoContext, c: ReducedCase): boolean {
+// Who sees which case in the lists. An employee: only what they raised. A team leader: what they
+// raised and what the people who report to them raised (by name or by their anonymous handle) -
+// not the rest of the company; what merely sits on their desk is the inbox's job. A manager: everything.
+export function visibleTo(ctx: DemoContext, c: ReducedCase): boolean {
+  const { name, handle } = ctx.persona.who;
+  const own = c.from === name || (handle !== null && c.from === handle);
+  if (ctx.role === "member") return own;
   if (ctx.role !== "leader") return true;
-  const me = ctx.persona.who.name;
-  const dept = ctx.deptName(ctx.persona.role.dept);
-  const reports = ctx.seed.people.filter((p) => p.reportsTo === me).map((p) => p.name);
+  const reports = ctx.seed.people.filter((p) => p.reportsTo === name).map((p) => p.name);
   const handles = ctx.seed.personas.filter((r) => reports.includes(r.who.name) && r.who.handle).map((r) => r.who.handle as string);
-  return c.from === me || onDesk(c, me) || c.fromDept.startsWith(dept) || reports.includes(c.from) || handles.includes(c.from);
+  return own || reports.includes(c.from) || handles.includes(c.from);
 }
 
 // ── problems / ideas in the current department scope, with the list views' sort orders ──
