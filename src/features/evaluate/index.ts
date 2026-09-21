@@ -1,4 +1,4 @@
-// NextHub's evaluation of one raised problem or idea. It reads the company context the demo
+// NextUp's evaluation of one raised problem or idea. It reads the company context the demo
 // seed carries - org chart, routing map (who owns which decision type), known problems, the
 // spend rule, goals - and returns what it checked, step by step, plus where the case goes and
 // what it is worth. Pure: facts in, steps out. The page animates the steps; nothing here waits.

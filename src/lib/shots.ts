@@ -8,12 +8,17 @@ export type Shot = { name: string; url: string };
 const MAX_EDGE = 1400; // longest side after downscaling
 const QUALITY = 0.82;
 
-const shotsKey = (slug: string) => "nexthub." + slug + ".shots.v1";
+const shotsKey = (slug: string) => "nextup." + slug + ".shots.v1";
+const oldShotsKey = (slug: string) => "nexthub." + slug + ".shots.v1"; // pre-rename key, moved over once
 
 type ShotBook = Record<string, Shot[]>;
 
 function readBook(slug: string): ShotBook {
-  try { const v = localStorage.getItem(shotsKey(slug)); return v ? (JSON.parse(v) as ShotBook) : {}; } catch { return {}; }
+  try {
+    const old = localStorage.getItem(oldShotsKey(slug));
+    if (old !== null) { if (localStorage.getItem(shotsKey(slug)) === null) localStorage.setItem(shotsKey(slug), old); localStorage.removeItem(oldShotsKey(slug)); }
+    const v = localStorage.getItem(shotsKey(slug)); return v ? (JSON.parse(v) as ShotBook) : {};
+  } catch { return {}; }
 }
 function writeBook(slug: string, book: ShotBook): boolean {
   try { localStorage.setItem(shotsKey(slug), JSON.stringify(book)); return true; } catch { return false; /* quota or private mode */ }

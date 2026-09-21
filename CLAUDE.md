@@ -8,7 +8,7 @@ user to ask Kevin instead of working around it.
 
 ## What this project is
 
-NextHub — a Next.js 16 app (App Router, TypeScript, `src/`). Read `README.md`
+NextUp — a Next.js 16 app (App Router, TypeScript, `src/`). Read `README.md`
 first, then `docs/ARCHITECTURE.md` for the folder rules. The product idea is
 in `docs/PLAN.md`; routes in `docs/ROUTES.md`; the data model in
 `docs/DATA_MODEL.md`.

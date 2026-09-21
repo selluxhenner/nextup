@@ -1,11 +1,13 @@
 "use client";
 // One case, seen from three sides: its history as a timeline built from the event log.
-// Visible to everyone signed in (docs/ROUTES.md): it stays visible until it is answered, that is the promise.
+// Open to whoever may see it in their lists or has it on their desk (derive.canOpen): an employee
+// only their own, a lead their people's and their desk, a manager everything.
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import { useDemo } from "@/components/dashboard/DemoProvider";
+import { canOpen } from "@/components/dashboard/derive";
 import { Avatar, Empty, Pill, reasonTone, statusTone } from "@/components/dashboard/shared/primitives";
 import type { CaseEvent } from "@/features/cases/events";
 import { raisedWith } from "@/features/cases/rows";
@@ -44,10 +46,11 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
   const [big, setBig] = useState<number | null>(null); // index of the screenshot shown full size
   if (!ready) return <div className={ui.loading} />;
   const c = S.cases.find((x) => x.id === caseId);
-  if (!c) {
+  // Someone else's case reads exactly like a missing one - the title is not leaked either way.
+  if (!c || !canOpen(ctx, c)) {
     return (
       <div className={ui.card}>
-        <Empty title="No such case" sub={"Nothing with the id “" + caseId + "” exists for this company."}>
+        <Empty title="No such case" sub={"Nothing with the id “" + caseId + "” is in your view for this company."}>
           <Link href={href("/")} className={ui.ghost}>Back home</Link>
         </Empty>
       </div>

@@ -11,6 +11,7 @@ import { useDemo } from "@/components/dashboard/DemoProvider";
 import { mineRows, openCases } from "@/components/dashboard/derive";
 import { decisionsWaiting } from "@/features/metrics";
 import { DevPanel } from "./DevPanel";
+import { Ground } from "./Ground";
 import { InputSheet } from "./InputSheet";
 import styles from "./SimpleShell.module.css";
 
@@ -36,6 +37,7 @@ export function SimpleShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className={styles.root}>
+      <Ground />
       <header className={styles.bar}>
         {/* The wordmark carries the name; the company only shows on hover (the mockup keeps the bar to three things). */}
         <Link href={"/" + tenant.slug + "/raise"} className={styles.brand} title={tenant.name} onClick={() => setPop(null)}>

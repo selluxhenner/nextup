@@ -36,6 +36,10 @@ export function visibleTo(ctx: DemoContext, c: ReducedCase): boolean {
   return own || reports.includes(c.from) || handles.includes(c.from);
 }
 
+// Who may open a case by its link: what they see in the lists, plus what sits on their desk (a
+// lead opens their inbox cases here too). An employee cannot open a colleague's case by URL.
+export const canOpen = (ctx: DemoContext, c: ReducedCase) => visibleTo(ctx, c) || onDesk(c, ctx.persona.who.name);
+
 // ── problems / ideas in the current department scope, with the list views' sort orders ──
 import type { ReducedCase, ReducedIdea, ReducedProblem } from "@/features/cases/reducer";
 import { criteriaCount, upsideNum } from "@/features/metrics";

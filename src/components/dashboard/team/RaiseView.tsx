@@ -1,9 +1,9 @@
 "use client";
 // TEAM MEMBER home: the raise box, after the collaborator's NextUp mockup. Idea or problem, one line,
-// optional screenshots and the people or departments it also hits, then ↑. NextHub evaluates it
+// optional screenshots and the people or departments it also hits, then ↑. NextUp evaluates it
 // against the company context (org chart, routing map, goals, spend rule, known problems) -
 // features/evaluate - and the lower card shows that evaluation step by step before the case is raised.
-// While nothing is typed the lower card explains how NextHub works; while typing it takes context.
+// While nothing is typed the lower card explains how NextUp works; while typing it takes context.
 // Demo: the steps are timed, the facts are real; the screenshots stay in this browser (src/lib/shots.ts,
 // keyed by case id), only their count becomes an event fact.
 import Link from "next/link";
@@ -23,11 +23,11 @@ const STEP_MS = 1100; // one step per ~1.1 s -> about 9 s for eight steps
 const MAX_SHOTS = 4;
 const MIN_CHARS = 8;
 const PROMPTS = ["Impact", "Who's blocked", "Already tried", "Deadline"];
-const HOW: { n: string; title: string; text: string }[] = [
-  { n: "01", title: "Raise it", text: "Anyone, from any team, submits an idea or a problem in one line." },
-  { n: "02", title: "It reads the context", text: SITE.name + " maps it against your org structure, business model, and goals." },
-  { n: "03", title: "Validated & scored", text: "Scored on strategic fit, urgency, impact, and KPI relevance." },
-  { n: "04", title: "Connected & tracked", text: "The right people pick it up; results roll up to leadership." },
+const HOW: { id: "raise" | "context" | "score" | "track"; title: string; text: string }[] = [
+  { id: "raise", title: "Raise it", text: "Anyone, from any team, submits an idea or a problem in one line." },
+  { id: "context", title: "It reads the context", text: SITE.name + " maps it against your org structure, business model, and goals." },
+  { id: "score", title: "Validated & scored", text: "Scored on strategic fit, urgency, impact, and KPI relevance." },
+  { id: "track", title: "Connected & tracked", text: "The right people pick it up; results roll up to leadership." },
 ];
 
 type Phase = { at: "edit" } | { at: "thinking"; ev: Evaluation; done: number } | { at: "done"; ev: Evaluation; id: string };
@@ -124,12 +124,6 @@ export function RaiseView() {
 
   return (
     <div className={styles.page} data-kind={kind} data-phase={phase.at}>
-      {/* The drifting blue ground behind everything on this page - fixed, so it never scrolls away. */}
-      <div className={styles.ground} aria-hidden="true">
-        <span className={styles.blob1} /><span className={styles.blob2} /><span className={styles.blob3} /><span className={styles.blob4} />
-        <span className={styles.grain} />
-      </div>
-
       <h1 className={styles.title}>Raise it, {who.name}</h1>
 
       <div className={styles.boxWrap}>
@@ -232,19 +226,17 @@ export function RaiseView() {
               <span className={styles.cardTag}>Raised → routed → tracked</span>
             </div>
             <div className={styles.how}>
-              {HOW.map((s, i) => (
-                <section key={s.n} className={styles.step}>
-                  <div className={styles.rail} data-last={i === HOW.length - 1 ? "true" : undefined}><span className={styles.railDot} /></div>
-                  <span className={styles.stepN}>{s.n}</span>
-                  <h3 className={styles.stepTitle}>{s.title}</h3>
-                  <p className={styles.stepText}>{s.text}</p>
+              {HOW.map((s) => (
+                <section key={s.id} className={styles.step}>
                   {/* Decorative sketches of each stage, as in the mockup - no data behind them. */}
                   <div className={styles.mini} aria-hidden="true">
-                    {s.n === "01" && <><span className={styles.miniRow}><span className={styles.miniBulb} /><span className={styles.miniBar} /></span><span className={styles.miniTags}><span>Idea</span><span>Problem</span></span></>}
-                    {s.n === "02" && ["Org", "Model", "Goals"].map((l, j) => <span key={l} className={styles.miniRow}><span className={styles.miniL}>{l}</span><span className={styles.miniTrack}><span className={styles.miniFill} style={{ width: ["82%", "64%", "91%"][j] }} /></span></span>)}
-                    {s.n === "03" && ([["Fit", 4], ["Urgency", 3], ["Impact", 5]] as const).map(([l, n]) => <span key={l} className={styles.miniRow}><span className={styles.miniL}>{l}</span><span className={styles.miniDots}>{[0, 1, 2, 3, 4].map((d) => <span key={d} data-on={d < n ? "true" : undefined} />)}</span></span>)}
-                    {s.n === "04" && <><span className={styles.miniRow}><span className={styles.miniFaces}><span>AK</span><span>JS</span><span>MR</span></span><span className={styles.miniFlight}>In flight</span></span><span className={styles.miniTrack}><span className={styles.miniFill} style={{ width: "58%" }} /></span></>}
+                    {s.id === "raise" && <><span className={styles.miniRow}><span className={styles.miniBulb} /><span className={styles.miniBar} /></span><span className={styles.miniTags}><span>Idea</span><span>Problem</span></span></>}
+                    {s.id === "context" && ["Org", "Model", "Goals"].map((l, j) => <span key={l} className={styles.miniRow}><span className={styles.miniL}>{l}</span><span className={styles.miniTrack}><span className={styles.miniFill} style={{ width: ["82%", "64%", "91%"][j] }} /></span></span>)}
+                    {s.id === "score" && ([["Fit", 4], ["Urgency", 3], ["Impact", 5]] as const).map(([l, n]) => <span key={l} className={styles.miniRow}><span className={styles.miniL}>{l}</span><span className={styles.miniDots}>{[0, 1, 2, 3, 4].map((d) => <span key={d} data-on={d < n ? "true" : undefined} />)}</span></span>)}
+                    {s.id === "track" && <><span className={styles.miniRow}><span className={styles.miniFaces}><span>AK</span><span>JS</span><span>MR</span></span><span className={styles.miniFlight}>In flight</span></span><span className={styles.miniTrack}><span className={styles.miniFill} style={{ width: "58%" }} /></span></>}
                   </div>
+                  <h3 className={styles.stepTitle}>{s.title}</h3>
+                  <p className={styles.stepText}>{s.text}</p>
                 </section>
               ))}
             </div>
