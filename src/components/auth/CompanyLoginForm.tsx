@@ -2,17 +2,16 @@
 // The two-step company login: access code, then who you are. Props in, JSX out - the decisions
 // live in src/server/actions/auth.ts.
 import { useActionState } from "react";
-import { checkAccessCode, signIn, type LoginState } from "@/server/actions/auth";
+import { companyLogin, type LoginState } from "@/server/actions/auth";
 import { Field } from "@/components/ui/Field";
 import styles from "./forms.module.css";
 
 type Props = { slug: string; short: string; next?: string };
 
 export function CompanyLoginForm({ slug, short, next }: Props) {
-  const [state, act, pending] = useActionState<LoginState, FormData>(
-    async (prev, form) => (prev.step === "who" ? signIn(prev, form) : checkAccessCode(prev, form)),
-    { step: "code" },
-  );
+  // The action is passed directly, not wrapped in a closure: React needs the real server action
+  // to give the form something to submit to before it hydrates.
+  const [state, act, pending] = useActionState<LoginState, FormData>(companyLogin, { step: "code" });
 
   return (
     <form className={styles.form} action={act} autoComplete="off">

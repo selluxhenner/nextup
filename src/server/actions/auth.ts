@@ -30,8 +30,19 @@ async function companyBySlug(slug: string) {
   });
 }
 
+/**
+ * The whole company login, both steps, as ONE action.
+ *
+ * Deliberately not two actions picked by a client-side closure: useActionState must be handed a
+ * server action directly, or the form has no action to fall back to before React hydrates and a
+ * submit does nothing at all.
+ */
+export async function companyLogin(prev: LoginState, form: FormData): Promise<LoginState> {
+  return prev.step === "who" ? signIn(prev, form) : checkAccessCode(prev, form);
+}
+
 /** Step 1 -> step 2. Returns the people only once the code is right. */
-export async function checkAccessCode(_prev: LoginState, form: FormData): Promise<LoginState> {
+async function checkAccessCode(_prev: LoginState, form: FormData): Promise<LoginState> {
   const slug = String(form.get("slug") ?? "");
   const code = String(form.get("code") ?? "").trim();
   if (!code) return { step: "code", error: "Enter the code your team lead gave you." };
@@ -60,7 +71,7 @@ export async function checkAccessCode(_prev: LoginState, form: FormData): Promis
 }
 
 /** Step 2: the code again (so this cannot be called on its own) plus who you are. */
-export async function signIn(_prev: LoginState, form: FormData): Promise<LoginState> {
+async function signIn(_prev: LoginState, form: FormData): Promise<LoginState> {
   const slug = String(form.get("slug") ?? "");
   const code = String(form.get("code") ?? "").trim();
   const userId = String(form.get("userId") ?? "");
