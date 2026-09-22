@@ -1,5 +1,6 @@
 // Seeds the demo company into a fresh database.
 //
+//     npm run db:seed            (reads .env.local like the Prisma CLI does)
 //     DATABASE_URL=... npx tsx prisma/seed.ts
 //
 // Idempotent: re-running updates the company in place and leaves its event rows alone, so it is
@@ -13,6 +14,13 @@ import { DEMO_COMPANIES } from "../src/features/tenant/demo-companies";
 import { seedTemplate } from "../src/features/demo";
 import { toSeedJson } from "../src/features/demo/parse";
 import { getDb } from "../src/lib/db/client";
+
+// Same rule as prisma7.config.ts: .env.local on a laptop, the environment everywhere else.
+try {
+  process.loadEnvFile(".env.local");
+} catch {
+  /* no .env.local - DATABASE_URL is already in the environment (Docker, CI) */
+}
 
 const hashCode = hashAccessCode;
 
