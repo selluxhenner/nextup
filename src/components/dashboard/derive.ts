@@ -14,6 +14,12 @@ export const deskCases = (ctx: DemoContext) => ctx.D.cases.filter((c) => onDesk(
 export const inboxSorted = (ctx: DemoContext) =>
   deskCases(ctx).slice().sort((a, b) => (a.open === b.open ? 0 : a.open ? -1 : 1) || b.clock - a.clock || b.age - a.age);
 
+// A manager's inbox also holds the ideas waiting on their decision (the Overview's "Waiting on
+// you"): oldest wait on top. Leaders and members decide no ideas, so they get none.
+export const inboxIdeas = (ctx: DemoContext) => (ctx.role === "manager" ? decisionsWaiting(ctx.D) : []);
+// What the Inbox badge counts: live cases on the desk plus the decisions owed.
+export const inboxCount = (ctx: DemoContext) => openCases(ctx).length + inboxIdeas(ctx).length;
+
 // My cases: what I raised plus the ideas I co-signed, newest first.
 export function mineRows(ctx: DemoContext): MineRow[] {
   const handle = ctx.persona.who.handle;
@@ -42,7 +48,7 @@ export const canOpen = (ctx: DemoContext, c: ReducedCase) => visibleTo(ctx, c) |
 
 // ── problems / ideas in the current department scope, with the list views' sort orders ──
 import type { ReducedCase, ReducedIdea, ReducedProblem } from "@/features/cases/reducer";
-import { criteriaCount, upsideNum } from "@/features/metrics";
+import { criteriaCount, decisionsWaiting, upsideNum } from "@/features/metrics";
 
 export const problemOf = (ctx: DemoContext, i: ReducedIdea) => ctx.S.problems.find((p) => p.id === i.problem);
 export const scopedProblems = (ctx: DemoContext) => ctx.D.problems.filter((p) => ctx.matches(p.depts));
