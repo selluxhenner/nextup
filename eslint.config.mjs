@@ -14,6 +14,8 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     "legacy/**",
     ".github/ci/**",
+    // Collaborator drop-zone (gitignored): mockups, exports, screenshots.
+    "uploads/**",
   ]),
 ]);
 
