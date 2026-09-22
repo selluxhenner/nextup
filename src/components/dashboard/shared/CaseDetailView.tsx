@@ -76,7 +76,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
   // Back: where the visitor came from when it was inside the app, otherwise the dashboard.
   const back = () => { if (window.history.length > 1 && document.referrer.startsWith(window.location.origin)) router.back(); else router.push(href("/dashboard")); };
   const share = async () => {
-    try { await navigator.clipboard.writeText(window.location.href); showToast("Link copied — anyone signed in can open it."); }
+    try { await navigator.clipboard.writeText(window.location.href); showToast("Link copied — it opens for whoever may see this case."); }
     catch { showToast(window.location.href); }
   };
   const sendNote = () => { const t = note.trim(); if (!t) return; act.comment(c.id, t); setNote(""); };

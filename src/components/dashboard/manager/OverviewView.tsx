@@ -54,7 +54,7 @@ export function OverviewView() {
           )}
           <div className={styles.decisions}>
             {decisions.map((i) => (
-              <Link key={i.id} href={href("/ideas?id=" + i.id)} className={styles.decision}>
+              <Link key={i.id} href={href("/leader?id=" + i.id)} className={styles.decision}>
                 <div className={ui.between}>
                   <span className={styles.decisionTitle}>{i.title}</span>
                   <span className={styles.days} data-hot={i.wait > 20 ? "true" : undefined}>{i.wait} days</span>
