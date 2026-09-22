@@ -1,9 +1,11 @@
 "use client";
 // TEAM LEADER home: open items addressed to me, sorted by age, one action each - yes /
 // no+why / hand over / ask one question. Port of the INBOX block in legacy/demo/index.html.
+// A manager sees the same list with the ideas waiting on their decision on top.
+import Link from "next/link";
 import { useState } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
-import { deskCases, inboxSorted, openCases } from "@/components/dashboard/derive";
+import { deskCases, inboxIdeas, inboxSorted, openCases, problemOf } from "@/components/dashboard/derive";
 import { Avatar, Btn, Empty, Pill, reasonTone, type Tone } from "@/components/dashboard/shared/primitives";
 import { ViewHead } from "@/components/dashboard/shared/ViewHead";
 import { actedBy } from "@/features/cases/selectors";
@@ -12,7 +14,7 @@ import styles from "./InboxView.module.css";
 
 export function InboxView({ initialId }: { initialId?: string }) {
   const ctx = useDemo();
-  const { seed, D, demo, persona, act, openSheet, showToast, ready, f } = ctx;
+  const { seed, D, demo, persona, act, openSheet, showToast, ready, f, href } = ctx;
   // Selection: the page remounts this view (key = ?id) when a search result or link picks a case.
   const [cid, setCid] = useState<string | null>(initialId ?? null);
   if (!ready) return <div className={ui.loading} />;
@@ -20,7 +22,10 @@ export function InboxView({ initialId }: { initialId?: string }) {
   const who = persona.who, P = seed.promiseDays;
   const desk = deskCases(ctx), open = openCases(ctx);
   const inbox = inboxSorted(ctx);
-  const sc = inbox.find((c) => c.id === cid) ?? inbox[0] ?? null;
+  const ideas = inboxIdeas(ctx);
+  // The selection is an idea or a case; with nothing picked, the oldest decision owed wins.
+  const si = ideas.find((i) => i.id === cid) ?? (inbox.some((c) => c.id === cid) ? null : ideas[0] ?? null);
+  const sc = si ? null : inbox.find((c) => c.id === cid) ?? inbox[0] ?? null;
   const route = sc?.route ?? null;
   const scMine = !!route && route.owner.name === who.name;
   const handTo = route ? (scMine ? route.deputy : route.owner.name) : "the triage desk";
@@ -33,9 +38,9 @@ export function InboxView({ initialId }: { initialId?: string }) {
         : lastHand ? "From " + lastHand.from + ", " + f(lastHand.day) + (lastHand.why ? " — “" + lastHand.why + "”" : "") : "";
 
   const cleared = D.cases.map((c) => ({ c, did: actedBy(c, who.name) })).filter((x) => x.did === "decided" || x.did === "handed");
-  const overdue = open.filter((c) => c.overdue).length;
+  const overdue = open.filter((c) => c.overdue).length + ideas.filter((i) => i.wait > P).length;
   const stats = [
-    { v: String(desk.length), l: open.length === desk.length ? "on your desk" : "on your desk · " + (desk.length - open.length) + " paused" },
+    { v: String(desk.length + ideas.length), l: open.length === desk.length ? "on your desk" : "on your desk · " + (desk.length - open.length) + " paused" },
     { v: String(overdue), l: "past the " + P + "-day promise", hot: overdue > 0 },
     { v: demo ? seed.metrics.lead.medianAnswer : "—", l: "median time to answer" },
     { v: demo ? seed.metrics.lead.withinPromise : "—", l: "within the promise, Q3" },
@@ -59,10 +64,36 @@ const sel = (c: (typeof inbox)[number]) => { if (c.read === null) act.read(c.id)
         <div className={ui.split}>
           <div className={ui.stack}>
             <div className={`${ui.card} ${ui.cardList}`}>
-              {inbox.length === 0 && (
+              {inbox.length === 0 && ideas.length === 0 && (
                 <Empty title="Inbox empty" sub="Nothing is waiting on you." />
               )}
               <div className={ui.list}>
+                {ideas.map((i) => {
+                  const late = i.wait > P, soon = i.wait >= P - 2 && !late;
+                  return (
+                    <div key={i.id} className={ui.row} data-active={si?.id === i.id ? "true" : undefined} onClick={() => setCid(i.id)}>
+                      <div className={ui.mark} />
+                      <div className={ui.rowBody}>
+                        <div className={styles.rowTop}>
+                          <div className={styles.rowMain}>
+                            <div className={styles.caseTitle}>{i.title}</div>
+                            <div className={ui.rowSub}>{i.proposedBy} · solves: {problemOf(ctx, i)?.title ?? "—"}</div>
+                          </div>
+                          <div className={styles.rowRight}>
+                            <span className={styles.clock} data-tone={late ? "late" : soon ? "soon" : undefined}>
+                              {late ? i.wait - P + " d past the promise" : P - i.wait + " d left"}
+                            </span>
+                            <span className={styles.open}>waiting {i.wait} d</span>
+                          </div>
+                        </div>
+                        <div className={`${ui.chips} ${styles.why}`}>
+                          <Pill tone="accent">decision</Pill>
+                          {i.blocker && <span className={styles.whyLabel}>{i.blocker}</span>}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
                 {inbox.map((c) => {
                   const paused = c.status === "asked";
                   const toMe = !!(c.escalated && c.escalated.to === who.name && c.assignee !== who.name);
@@ -113,8 +144,28 @@ const sel = (c: (typeof inbox)[number]) => { if (c.read === null) act.read(c.id)
 
           <div className={`${ui.sticky} ${ui.stack}`}>
             <div className={ui.card}>
-              <div className={ui.eyebrow}>Selected case</div>
-              {!sc ? (
+              <div className={ui.eyebrow}>{si ? "Selected idea" : "Selected case"}</div>
+              {si ? (
+                <>
+                  <div className={ui.h2}>{si.title}</div>
+                  <div className={`${ui.chips} ${styles.selMeta}`}>
+                    <Pill tone="accent">{si.status}</Pill>
+                    <span className={ui.small}>waiting {si.wait} days</span>
+                  </div>
+                  <div className={`${ui.body} ${ui.mt14}`}>{si.rationale}</div>
+                  <div className={`${ui.grid2} ${ui.mt14}`}>
+                    <div className={ui.tile}><div className={ui.tileTitle}>{si.upside}</div><div className={ui.tileL}>expected upside / yr</div></div>
+                    <div className={ui.tile}><div className={ui.tileTitle}>{si.effort}</div><div className={ui.tileL}>to find out if it works</div></div>
+                  </div>
+                  {si.blocker && <div className={styles.handedNote}>{si.blocker}</div>}
+                  <div className={`${ui.eyebrow} ${styles.section}`}>Your move</div>
+                  <div className={`${ui.btnRow} ${styles.actions}`}>
+                    <Btn kind="accent" onClick={() => openSheet("assign", si.id, { people: si.team.filter((n) => n !== "—" && n !== "Anonymous") })}>Approve and assign</Btn>
+                    <Btn onClick={() => openSheet("askIdea", si.id)}>Ask a question</Btn>
+                  </div>
+                  <div className={ui.mt14}><Link href={href("/ideas?id=" + si.id)} className={ui.textlink}>Open the idea →</Link></div>
+                </>
+              ) : !sc ? (
                 <>
                   <div className={ui.h2}>Inbox empty</div>
                 </>
