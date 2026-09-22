@@ -119,3 +119,24 @@ builds it:
 ```bash
 npm install && npm run dev      # DATABASE_URL unset
 ```
+
+## Just a database, app on the host
+
+The middle path, and the quickest way to work on `/admin` or anything session-related: Postgres in
+a container, the app on your machine.
+
+```bash
+docker compose up -d db
+cp .env.example .env.local      # already points at 127.0.0.1:5432
+npm run db:migrate              # create the tables
+npm run db:seed                 # the acme demo company; prints its access code once
+npm run dev                     # http://localhost:3000/acme
+```
+
+Both db scripts read `.env.local` themselves, so nothing needs exporting.
+
+> **Use `127.0.0.1`, not `localhost`.** Node resolves `localhost` to `::1` first and Docker
+> Desktop publishes the port on IPv4 only, so a `localhost` URL fails with *"Can't reach database
+> server at `::1`"*. `.env.example` already has the right form.
+
+For `/admin` you also need `AUTH_SECRET` and `ADMIN_ACCESS_CODE` set in `.env.local`.

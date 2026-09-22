@@ -29,6 +29,7 @@ docker compose up --build     # http://acme.localhost, http://admin.localhost
 | `npm run dev` | dev server with hot reload |
 | `npm run build` / `npm start` | production build / serve it |
 | `npm run lint` · `npm run typecheck` · `npm test` | what CI runs (all database-free) |
+| `npm run db:migrate` · `npm run db:seed` | set up a local database and its demo company (reads `.env.local`) |
 | `ops/test-db.sh` | the database-backed suite, kept out of `npm test` |
 | `npm run demo` | the old static demo at http://localhost:8765 (`legacy/demo/`) |
 
