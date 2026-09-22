@@ -123,7 +123,10 @@
 @keyframes pop { 0% { transform: scale(0.2); opacity: 0; } 45% { transform: scale(1.18); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
 
 /* The card under the box: how it works / add context / the evaluation. */
-.card { width: 100%; background: var(--nh-card); border-radius: 28px; overflow: hidden; box-shadow: 0 22px 44px -20px rgb(25 50 70 / 0.16), 0 6px 14px rgb(25 50 70 / 0.04); display: flex; flex-direction: column; }
+.card { width: 100%; background: var(--nh-card); border-radius: 28px; overflow: hidden; box-shadow: 0 22px 44px -20px rgb(25 50 70 / 0.16), 0 6px 14px rgb(25 50 70 / 0.04); display: grid; }
+/* The three states share one grid cell, so the card is always as tall as the tallest - "How it works" - whichever is showing. */
+.state { grid-area: 1 / 1; display: flex; flex-direction: column; min-width: 0; }
+.state:not([data-on="true"]) { visibility: hidden; pointer-events: none; }
 .cardHead { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 16px clamp(18px, 2.4vw, 30px) 12px; border-bottom: 1px solid #e7edf1; }
 .cardTitle { display: flex; align-items: center; gap: 10px; margin: 0; font-family: var(--nh-serif); font-size: 21px; font-weight: 400; letter-spacing: 0; color: var(--nh-ink); }
 .cardTag { font-family: var(--nh-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: #7b8794; white-space: nowrap; }
@@ -154,8 +157,8 @@
 .miniFaces span + span { margin-left: -8px; }
 .miniFlight { color: var(--nh-brand); background: var(--nh-brand-tint); border: 0; }
 
-.ctx { display: flex; flex-direction: column; gap: 14px; padding: 16px clamp(18px, 2.4vw, 30px) 22px; }
-.ctxField { width: 100%; box-sizing: border-box; resize: vertical; min-height: 150px; border: 1px solid #e7edf1; border-radius: 14px; padding: 14px 16px; background: #fcfdfd; font-family: inherit; font-size: 14.5px; line-height: 1.6; color: var(--nh-ink); outline: 0; }
+.ctx { flex: 1; display: flex; flex-direction: column; gap: 14px; padding: 16px clamp(18px, 2.4vw, 30px) 22px; }
+.ctxField { flex: 1; width: 100%; box-sizing: border-box; resize: none; min-height: 96px; /* fills the "How it works" height rather than setting the card's */ border: 1px solid #e7edf1; border-radius: 14px; padding: 14px 16px; background: #fcfdfd; font-family: inherit; font-size: 14.5px; line-height: 1.6; color: var(--nh-ink); outline: 0; }
 .ctxField::placeholder { color: var(--nh-mute-2); }
 .ctxField:focus { border-color: var(--nh-brand-line); box-shadow: 0 0 0 3px var(--nh-brand-tint); }
 .prompts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
@@ -163,34 +166,23 @@
 .prompt { cursor: pointer; border: 1px solid #e6edf1; background: var(--nh-card); border-radius: 999px; padding: 6px 13px; font-family: inherit; font-size: 12.5px; color: #5c6773; }
 .prompt:hover { background: #f6f9fa; }
 
-/* NextUp evaluating: the steps landing one after another, then the receipt. */
-.orb { display: flex; width: 20px; height: 20px; flex: none; } /* the thinking-orbs canvas, ink; still while evaluated */
-/* Evaluating and evaluated fit a 720px-tall viewport without scrolling: the page tightens, the eight steps sit in two columns, the banner is one row. */
-.page[data-phase="thinking"], .page[data-phase="done"] { padding-top: 6px; gap: 12px; }
-.evalSteps { list-style: none; margin: 0; padding: 8px clamp(12px, 2vw, 22px); display: grid; grid-template-columns: 1fr 1fr; gap: 2px 12px; }
-.evalStep { display: flex; align-items: flex-start; gap: 10px; padding: 5px 8px; border-radius: var(--nh-r-sm); transition: background 0.2s ease, opacity 0.2s ease; }
-.evalStep[data-state="todo"] { opacity: 0.35; }
-.evalStep[data-state="now"] { background: #f6f9fa; }
-.evalStep[data-state="done"] { animation: land 0.25s ease-out; }
+/* NextUp evaluating: the orb, the word, the step it is on - centred - then the receipt. */
+.evalCenter { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 8px; padding: 14px clamp(18px, 2.4vw, 30px) 16px; }
+.orb { display: flex; width: 64px; height: 64px; flex: none; } /* the thinking-orbs canvas, ink; still once evaluated */
+.evalHead { margin: 4px 0 0; font-family: var(--nh-serif); font-size: 24px; font-weight: 400; letter-spacing: 0; color: var(--nh-ink); }
+.evalNow { display: flex; align-items: baseline; justify-content: center; flex-wrap: wrap; gap: 4px 10px; margin: 0; font-size: 14px; font-weight: 600; color: var(--nh-ink-2); animation: land 0.25s ease-out; }
+.evalN { font-family: var(--nh-mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: #9aa5b1; }
 @keyframes land { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
-.mark { width: 18px; height: 18px; border-radius: 50%; flex: none; margin-top: 1px; border: 1.5px solid #dde5ea; display: grid; place-items: center; font-size: 11px; font-weight: 800; color: #fff; }
-.evalStep[data-state="done"] .mark { background: var(--nh-brand); border-color: var(--nh-brand); }
-.evalStep[data-state="now"] .mark { border-color: var(--nh-brand); border-top-color: transparent; animation: spin 0.8s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
-.evalText { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.evalTitle { font-size: 13.5px; font-weight: 600; color: var(--nh-ink); }
-.evalStep[data-state="todo"] .evalTitle { font-weight: 500; }
-.evalDetail { font-size: 12.5px; color: var(--nh-ink-2); line-height: 1.45; }
 
-.banner { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 16px; margin: 0 clamp(12px, 2vw, 22px) 12px; padding: 10px 14px; border-radius: 14px; background: var(--k-tint); animation: land 0.3s ease-out; }
-.bannerSub { margin: 0; flex: 1 1 320px; font-size: 13.5px; color: var(--nh-ink-2); line-height: 1.5; }
+.banner { display: flex; flex-direction: column; align-items: center; gap: 8px; margin: 4px 0 0; max-width: 640px; padding: 10px 16px; border-radius: 14px; background: var(--k-tint); animation: land 0.3s ease-out; }
+.bannerSub { margin: 0; font-size: 13.5px; color: var(--nh-ink-2); line-height: 1.5; text-wrap: pretty; }
 .bannerSub strong { color: var(--nh-ink); }
-.bannerRow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; flex: none; }
-.again { margin-left: 4px; padding: 0; border: 0; background: none; font-family: inherit; font-size: 12.5px; font-weight: 600; color: var(--nh-mute); cursor: pointer; }
+.bannerRow { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; }
+.again { padding: 0; border: 0; background: none; font-family: inherit; font-size: 12.5px; font-weight: 600; color: var(--nh-mute); cursor: pointer; }
 .again:hover { color: var(--nh-ink); }
 
 @media (prefers-reduced-motion: reduce) {
-  .aura, .ringWash, .pulse, .send[data-sent="true"], .arrow, .check, .evalStep[data-state="now"] .mark, .evalStep[data-state="done"], .banner { animation: none; }
+  .aura, .ringWash, .pulse, .send[data-sent="true"], .arrow, .check, .evalNow, .banner { animation: none; }
   .send[data-sent="true"] .arrow { opacity: 0; }
   .send[data-sent="true"] .check { opacity: 1; }
 }
@@ -202,10 +194,8 @@
   .how { grid-template-columns: 1fr 1fr; gap: 22px 18px; padding: 18px 16px 22px; }
   .step { padding: 0; border-left: 0; }
   .picker { width: min(296px, calc(100vw - 48px)); }
-  .evalSteps { grid-template-columns: 1fr; }
+  .state:not([data-on="true"]) { display: none; } /* "How it works" stacks tall here; each state takes its own height */
   .sendWrap { width: 100%; justify-content: flex-end; }
-  .banner { flex-direction: column; align-items: stretch; }
-  .bannerRow .again { margin-left: auto; }
 }
 @media (max-width: 480px) {
   .how { grid-template-columns: 1fr; }

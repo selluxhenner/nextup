@@ -275,82 +275,79 @@ export function RaiseView() {
         </div>
       </div>
 
+      {/* One card, three states stacked in the same cell: "How it works" is always laid out (hidden when not
+          current) so the card keeps its size while typing and while evaluating. */}
       <div className={styles.card}>
-        {phase.at === "edit" && !composing && (
-          <>
-            <div className={styles.cardHead}>
-              <h2 className={styles.cardTitle}>How {SITE.name} works</h2>
-              <span className={styles.cardTag}>Raised → routed → tracked</span>
-            </div>
-            <div className={styles.how}>
-              {HOW.map((s) => (
-                <section key={s.id} className={styles.step}>
-                  {/* Decorative sketches of each stage, as in the mockup - no data behind them. */}
-                  <div className={styles.mini} aria-hidden="true">
-                    {s.id === "raise" && <><span className={styles.miniRow}><span className={styles.miniBulb} /><span className={styles.miniBar} /></span><span className={styles.miniTags}><span>Idea</span><span>Problem</span></span></>}
-                    {s.id === "context" && ["Org", "Model", "Goals"].map((l, j) => <span key={l} className={styles.miniRow}><span className={styles.miniL}>{l}</span><span className={styles.miniTrack}><span className={styles.miniFill} style={{ width: ["82%", "64%", "91%"][j] }} /></span></span>)}
-                    {s.id === "score" && ([["Fit", 4], ["Urgency", 3], ["Impact", 5]] as const).map(([l, n]) => <span key={l} className={styles.miniRow}><span className={styles.miniL}>{l}</span><span className={styles.miniDots}>{[0, 1, 2, 3, 4].map((d) => <span key={d} data-on={d < n ? "true" : undefined} />)}</span></span>)}
-                    {s.id === "track" && <><span className={styles.miniRow}><span className={styles.miniFaces}><span>AK</span><span>JS</span><span>MR</span></span><span className={styles.miniFlight}>In flight</span></span><span className={styles.miniTrack}><span className={styles.miniFill} style={{ width: "58%" }} /></span></>}
-                  </div>
-                  <h3 className={styles.stepTitle}>{s.title}</h3>
-                  <p className={styles.stepText}>{s.text}</p>
-                </section>
-              ))}
-            </div>
-          </>
-        )}
-
-        {phase.at === "edit" && composing && (
-          <>
-            <div className={styles.cardHead}>
-              <h2 className={styles.cardTitle}>Add context</h2>
-              <span className={styles.cardTag}>{words ? words + (words === 1 ? " word" : " words") : "Optional"}</span>
-            </div>
-            <div className={styles.ctx}>
-              <textarea className={styles.ctxField} value={context} onChange={(e) => setContext(e.target.value)} rows={6} aria-label="Context"
-                placeholder={"What's happening, who does it affect, what have you already tried? The more context, the better " + SITE.name + " can route it."} />
-              <div className={styles.prompts}>
-                <span className={styles.promptsL}>Prompts</span>
-                {PROMPTS.map((p) => <button key={p} type="button" className={styles.prompt} onClick={() => addPrompt(p)}>{p}</button>)}
-              </div>
-            </div>
-          </>
-        )}
-
-        {(phase.at === "thinking" || phase.at === "done") && (() => {
-          const ev = phase.ev, done = phase.at === "done" ? ev.steps.length + 1 : phase.done;
+        {(() => {
+          const showHow = phase.at === "edit" && !composing, showCtx = phase.at === "edit" && composing, showEval = phase.at !== "edit";
+          const state = (on: boolean) => ({ className: styles.state, "data-on": on ? "true" : undefined, inert: !on, "aria-hidden": !on });
           return (
             <>
-              <div className={styles.cardHead}>
-                <h2 className={styles.cardTitle}><span className={styles.orb} aria-hidden="true"><ThinkingOrb state="solving" size={20} theme="light" color={INK} paused={phase.at !== "thinking" || reduced} /></span>{phase.at === "thinking" ? SITE.name + " is evaluating" : "Evaluated"}</h2>
-                <span className={styles.cardTag}>{phase.at === "thinking" ? Math.min(done, ev.steps.length) + " / " + ev.steps.length : "Score " + ev.score.value}</span>
-              </div>
-              <ol className={styles.evalSteps} aria-live="polite">
-                {ev.steps.map((s, i) => {
-                  const state = i < done ? "done" : i === done ? "now" : "todo";
-                  return (
-                    <li key={s.id} className={styles.evalStep} data-state={state}>
-                      <span className={styles.mark} aria-hidden="true">{state === "done" ? "✓" : ""}</span>
-                      <span className={styles.evalText}>
-                        <span className={styles.evalTitle}>{s.title}</span>
-                        {state === "done" && <span className={styles.evalDetail}>{s.detail}</span>}
-                      </span>
-                    </li>
-                  );
-                })}
-              </ol>
-              {phase.at === "done" && (
-                <div className={styles.banner} role="status">
-                  <p className={styles.bannerSub}>
-                    On <strong>{ev.lead}</strong>’s desk{ev.passesTo ? <>, passed to <strong>{ev.passesTo}</strong> if it is theirs</> : null}. Answer owed in {seed.promiseDays} d — it stays on the dashboard until then.
-                  </p>
-                  <div className={styles.bannerRow}>
-                    <Link href={href("/dashboard")} className="nh-btn nh-btn-primary nh-btn-sm">See it on the dashboard</Link>
-                    <Link href={href("/cases/" + phase.id)} className="nh-btn nh-btn-ghost nh-btn-sm">Open the case</Link>
-                    <button type="button" className={styles.again} onClick={reset}>Raise another</button>
+              <section {...state(showHow)}>
+                <div className={styles.cardHead}>
+                  <h2 className={styles.cardTitle}>How {SITE.name} works</h2>
+                  <span className={styles.cardTag}>Raised → routed → tracked</span>
+                </div>
+                <div className={styles.how}>
+                  {HOW.map((s) => (
+                    <section key={s.id} className={styles.step}>
+                      {/* Decorative sketches of each stage, as in the mockup - no data behind them. */}
+                      <div className={styles.mini} aria-hidden="true">
+                        {s.id === "raise" && <><span className={styles.miniRow}><span className={styles.miniBulb} /><span className={styles.miniBar} /></span><span className={styles.miniTags}><span>Idea</span><span>Problem</span></span></>}
+                        {s.id === "context" && ["Org", "Model", "Goals"].map((l, j) => <span key={l} className={styles.miniRow}><span className={styles.miniL}>{l}</span><span className={styles.miniTrack}><span className={styles.miniFill} style={{ width: ["82%", "64%", "91%"][j] }} /></span></span>)}
+                        {s.id === "score" && ([["Fit", 4], ["Urgency", 3], ["Impact", 5]] as const).map(([l, n]) => <span key={l} className={styles.miniRow}><span className={styles.miniL}>{l}</span><span className={styles.miniDots}>{[0, 1, 2, 3, 4].map((d) => <span key={d} data-on={d < n ? "true" : undefined} />)}</span></span>)}
+                        {s.id === "track" && <><span className={styles.miniRow}><span className={styles.miniFaces}><span>AK</span><span>JS</span><span>MR</span></span><span className={styles.miniFlight}>In flight</span></span><span className={styles.miniTrack}><span className={styles.miniFill} style={{ width: "58%" }} /></span></>}
+                      </div>
+                      <h3 className={styles.stepTitle}>{s.title}</h3>
+                      <p className={styles.stepText}>{s.text}</p>
+                    </section>
+                  ))}
+                </div>
+              </section>
+
+              <section {...state(showCtx)}>
+                <div className={styles.cardHead}>
+                  <h2 className={styles.cardTitle}>Add context</h2>
+                  <span className={styles.cardTag}>{words ? words + (words === 1 ? " word" : " words") : "Optional"}</span>
+                </div>
+                <div className={styles.ctx}>
+                  <textarea className={styles.ctxField} value={context} onChange={(e) => setContext(e.target.value)} rows={3} aria-label="Context"
+                    placeholder={"What's happening, who does it affect, what have you already tried? The more context, the better " + SITE.name + " can route it."} />
+                  <div className={styles.prompts}>
+                    <span className={styles.promptsL}>Prompts</span>
+                    {PROMPTS.map((p) => <button key={p} type="button" className={styles.prompt} onClick={() => addPrompt(p)}>{p}</button>)}
                   </div>
                 </div>
-              )}
+              </section>
+
+              {/* Evaluating: the orb, the word, and the one step it is on right now; then the receipt. */}
+              <section {...state(showEval)}>
+                {phase.at !== "edit" && (() => {
+                  const ev = phase.ev, at = phase.at === "thinking" ? Math.min(phase.done, ev.steps.length - 1) : -1;
+                  const thinking = at >= 0, now = thinking ? ev.steps[at] : null;
+                  return (
+                    <div className={styles.evalCenter}>
+                      <span className={styles.orb} aria-hidden="true"><ThinkingOrb state="solving" size={64} theme="light" color={INK} paused={!thinking || reduced} /></span>
+                      <h2 className={styles.evalHead}>{thinking ? "Evaluating" : "Evaluated"}</h2>
+                      <p className={styles.evalNow} aria-live="polite">
+                        {now ? <>{now.title}<span className={styles.evalN}>{at + 1} / {ev.steps.length}</span></> : <>Score {ev.score.value}<span className={styles.evalN}>{ev.steps.length} checks</span></>}
+                      </p>
+                      {phase.at === "done" && (
+                        <div className={styles.banner} role="status">
+                          <p className={styles.bannerSub}>
+                            On <strong>{ev.lead}</strong>’s desk{ev.passesTo ? <>, passed to <strong>{ev.passesTo}</strong> if it is theirs</> : null}. Answer owed in {seed.promiseDays} d — it stays on the dashboard until then.
+                          </p>
+                          <div className={styles.bannerRow}>
+                            <Link href={href("/dashboard")} className="nh-btn nh-btn-primary nh-btn-sm">See it on the dashboard</Link>
+                            <Link href={href("/cases/" + phase.id)} className="nh-btn nh-btn-ghost nh-btn-sm">Open the case</Link>
+                            <button type="button" className={styles.again} onClick={reset}>Raise another</button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+              </section>
             </>
           );
         })()}
