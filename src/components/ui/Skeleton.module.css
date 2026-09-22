@@ -1,0 +1,16 @@
+/* Grey boxes standing in for content that has not arrived yet. One soft pulse; none under reduced motion. */
+.box { display: block; flex: none; max-width: 100%; background: var(--nh-line-soft); border-radius: var(--nh-r-sm); animation: pulse 1.5s ease-in-out infinite; }
+.box[data-r="md"] { border-radius: 12px; }
+.box[data-r="lg"] { border-radius: var(--nh-r-lg); }
+.box[data-r="pill"] { border-radius: 999px; }
+.box[data-r="circle"] { border-radius: 50%; }
+.dark { background: var(--nh-dark-line); }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .box { animation: none; }
+}

@@ -7,7 +7,7 @@
 import { redirect } from "next/navigation";
 import { ROLE_HOME, type Role } from "@/config/roles";
 import { verifyAccessCode } from "@/features/auth/access-code";
-import { getDb, hasDatabase } from "@/lib/db/client";
+import { getDb, hasDatabase, orDemo } from "@/lib/db/client";
 import { clearSession, issueSession } from "@/server/issue-session";
 
 export type LoginPerson = { id: string; name: string; role: Role; line: string };
@@ -19,16 +19,26 @@ export type LoginState =
 const wrongCode = (): LoginState => ({ step: "code", error: "That code is not right for this company." });
 
 async function companyBySlug(slug: string) {
-  return getDb().company.findUnique({
-    where: { slug },
-    select: {
-      id: true,
-      slug: true,
-      accessCodeHash: true,
-      users: { orderBy: { name: "asc" } },
-    },
-  });
+  // null when Postgres is gone as well as when the slug is unknown; callers check hasDatabase().
+  return orDemo(
+    () =>
+      getDb().company.findUnique({
+        where: { slug },
+        select: {
+          id: true,
+          slug: true,
+          accessCodeHash: true,
+          users: { orderBy: { name: "asc" } },
+        },
+      }),
+    () => null,
+  );
 }
+
+const noDatabase = (): LoginState => ({
+  step: "code",
+  error: "No database is connected, so there is nobody to sign in as. The demo works without one.",
+});
 
 /**
  * The whole company login, both steps, as ONE action.
@@ -47,11 +57,10 @@ async function checkAccessCode(_prev: LoginState, form: FormData): Promise<Login
   const code = String(form.get("code") ?? "").trim();
   if (!code) return { step: "code", error: "Enter the code your team lead gave you." };
 
-  if (!hasDatabase()) {
-    return { step: "code", error: "No database is configured, so there is nobody to sign in as yet." };
-  }
+  if (!hasDatabase()) return noDatabase();
 
   const company = await companyBySlug(slug);
+  if (!hasDatabase()) return noDatabase();
   if (!company || !verifyAccessCode(code, company.accessCodeHash)) return wrongCode();
 
   if (company.users.length === 0) {
@@ -77,9 +86,10 @@ async function signIn(_prev: LoginState, form: FormData): Promise<LoginState> {
   const userId = String(form.get("userId") ?? "");
   const next = String(form.get("next") ?? "");
 
-  if (!hasDatabase()) return { step: "code", error: "No database is configured." };
+  if (!hasDatabase()) return noDatabase();
 
   const company = await companyBySlug(slug);
+  if (!hasDatabase()) return noDatabase();
   // Re-checked, not trusted from the previous round trip.
   if (!company || !verifyAccessCode(code, company.accessCodeHash)) return wrongCode();
 
