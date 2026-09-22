@@ -24,7 +24,7 @@ const STEP_MS = 1100; // one step per ~1.1 s -> about 9 s for eight steps
 const MAX_SHOTS = 4;
 const MIN_CHARS = 8;
 const PROMPTS = ["Impact", "Who's blocked", "Already tried", "Deadline"];
-const KIND_INK: Record<CaseKind, string> = { idea: "#d9a11a", problem: "#c93a2d" }; // = --k in RaiseView.module.css; the orb tints from a prop, not CSS
+const INK = "#141414"; // = --nh-ink in tokens.css; the orb tints from a prop, not CSS
 const HOW: { id: "raise" | "context" | "score" | "track"; title: string; text: string }[] = [
   { id: "raise", title: "Raise it", text: "Anyone, from any team, submits an idea or a problem in one line." },
   { id: "context", title: "It reads the context", text: SITE.name + " maps it against your org structure, business model, and goals." },
@@ -274,7 +274,7 @@ export function RaiseView() {
           return (
             <>
               <div className={styles.cardHead}>
-                <h2 className={styles.cardTitle}><span className={styles.orb} aria-hidden="true"><ThinkingOrb state="solving" size={20} theme="light" color={KIND_INK[kind]} paused={phase.at !== "thinking" || reduced} /></span>{phase.at === "thinking" ? SITE.name + " is evaluating" : "Evaluated"}</h2>
+                <h2 className={styles.cardTitle}><span className={styles.orb} aria-hidden="true"><ThinkingOrb state="solving" size={20} theme="light" color={INK} paused={phase.at !== "thinking" || reduced} /></span>{phase.at === "thinking" ? SITE.name + " is evaluating" : "Evaluated"}</h2>
                 <span className={styles.cardTag}>{phase.at === "thinking" ? Math.min(done, ev.steps.length) + " / " + ev.steps.length : "Score " + ev.score.value}</span>
               </div>
               <ol className={styles.evalSteps} aria-live="polite">

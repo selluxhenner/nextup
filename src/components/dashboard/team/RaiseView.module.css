@@ -37,7 +37,7 @@
 .mode:disabled { cursor: default; opacity: 0.7; }
 .mode:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
 .thumb { position: absolute; top: 2px; left: 2px; width: calc(50% - 2px); height: calc(100% - 4px); border-radius: 999px; background: var(--nh-ink); box-shadow: 0 2px 5px rgb(16 20 24 / 0.18); transition: transform 0.32s cubic-bezier(0.4, 0.05, 0.2, 1); }
-.page[data-kind="problem"] .thumb { transform: translateX(calc(100% + 2px)); }
+.page[data-kind="problem"] .thumb { transform: translateX(100%); } /* its own width = the second icon's cell; +2px sat it off-centre */
 .modeOpt { position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; padding: 5px 6px; color: var(--nh-ink-2); transition: color 0.28s ease; }
 .modeOpt[data-on="true"] { color: #fff; }
 .modeOpt svg { display: block; }
@@ -148,9 +148,11 @@
 .prompt:hover { background: #f6f9fa; }
 
 /* NextUp evaluating: the steps landing one after another, then the receipt. */
-.orb { display: flex; width: 20px; height: 20px; flex: none; } /* the thinking-orbs canvas, tinted --k from the component; still while evaluated */
-.evalSteps { list-style: none; margin: 0; padding: 12px clamp(12px, 2vw, 22px) 14px; display: flex; flex-direction: column; gap: 4px; }
-.evalStep { display: flex; align-items: flex-start; gap: 10px; padding: 7px 8px; border-radius: var(--nh-r-sm); transition: background 0.2s ease, opacity 0.2s ease; }
+.orb { display: flex; width: 20px; height: 20px; flex: none; } /* the thinking-orbs canvas, ink; still while evaluated */
+/* Evaluating and evaluated fit a 720px-tall viewport without scrolling: the page tightens, the eight steps sit in two columns, the banner is one row. */
+.page[data-phase="thinking"], .page[data-phase="done"] { padding-top: 6px; gap: 12px; }
+.evalSteps { list-style: none; margin: 0; padding: 8px clamp(12px, 2vw, 22px); display: grid; grid-template-columns: 1fr 1fr; gap: 2px 12px; }
+.evalStep { display: flex; align-items: flex-start; gap: 10px; padding: 5px 8px; border-radius: var(--nh-r-sm); transition: background 0.2s ease, opacity 0.2s ease; }
 .evalStep[data-state="todo"] { opacity: 0.35; }
 .evalStep[data-state="now"] { background: #f6f9fa; }
 .evalStep[data-state="done"] { animation: land 0.25s ease-out; }
@@ -164,11 +166,11 @@
 .evalStep[data-state="todo"] .evalTitle { font-weight: 500; }
 .evalDetail { font-size: 12.5px; color: var(--nh-ink-2); line-height: 1.45; }
 
-.banner { margin: 0 clamp(12px, 2vw, 22px) 18px; padding: 14px 16px; border-radius: 14px; background: var(--k-tint); animation: land 0.3s ease-out; }
-.bannerSub { margin: 0; font-size: 13.5px; color: var(--nh-ink-2); line-height: 1.5; }
+.banner { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 16px; margin: 0 clamp(12px, 2vw, 22px) 12px; padding: 10px 14px; border-radius: 14px; background: var(--k-tint); animation: land 0.3s ease-out; }
+.bannerSub { margin: 0; flex: 1 1 320px; font-size: 13.5px; color: var(--nh-ink-2); line-height: 1.5; }
 .bannerSub strong { color: var(--nh-ink); }
-.bannerRow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
-.again { margin-left: auto; padding: 0; border: 0; background: none; font-family: inherit; font-size: 12.5px; font-weight: 600; color: var(--nh-mute); cursor: pointer; }
+.bannerRow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; flex: none; }
+.again { margin-left: 4px; padding: 0; border: 0; background: none; font-family: inherit; font-size: 12.5px; font-weight: 600; color: var(--nh-mute); cursor: pointer; }
 .again:hover { color: var(--nh-ink); }
 
 @media (prefers-reduced-motion: reduce) {
@@ -184,8 +186,10 @@
   .how { grid-template-columns: 1fr 1fr; gap: 22px 18px; padding: 18px 16px 22px; }
   .step { padding: 0; border-left: 0; }
   .picker { width: min(296px, calc(100vw - 48px)); }
+  .evalSteps { grid-template-columns: 1fr; }
   .sendWrap { width: 100%; justify-content: flex-end; }
-  .bannerRow .again { margin-left: 0; }
+  .banner { flex-direction: column; align-items: stretch; }
+  .bannerRow .again { margin-left: auto; }
 }
 @media (max-width: 480px) {
   .how { grid-template-columns: 1fr; }
