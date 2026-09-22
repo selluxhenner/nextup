@@ -8,7 +8,7 @@ export const metadata = { title: "Routing table" };
 
 export default async function RoutingSettingsPage({ params }: { params: Promise<{ company: string }> }) {
   const { company } = await params;
-  const seed = seedFor(company);
+  const seed = await seedFor(company);
   return (
     <>
       <h1>Routing table</h1>

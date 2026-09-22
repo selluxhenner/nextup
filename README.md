@@ -9,19 +9,32 @@ and `docs/DATA_MODEL.md` are the map. Process rules: `CONTRIBUTING.md`. AI sessi
 
 ## Run
 
+No database needed - it falls back to the built-in `acme` demo:
+
 ```bash
 npm install
-npm run dev          # http://localhost:3000
+npm run dev          # http://localhost:3000/acme
+```
+
+The whole stack - Postgres, n8n, a mail catcher and TLS - is one command, and gives every
+company its own subdomain. See **[docs/DEPLOY.md](docs/DEPLOY.md)**:
+
+```bash
+cp .env.example .env
+docker compose up --build     # http://acme.localhost, http://admin.localhost
 ```
 
 | Script | What |
 |---|---|
 | `npm run dev` | dev server with hot reload |
 | `npm run build` / `npm start` | production build / serve it |
-| `npm run lint` · `npm run typecheck` · `npm test` | what CI runs |
+| `npm run lint` · `npm run typecheck` · `npm test` | what CI runs (all database-free) |
+| `npm run db:migrate` · `npm run db:seed` | set up a local database and its demo company (reads `.env.local`) |
+| `ops/test-db.sh` | the database-backed suite, kept out of `npm test` |
 | `npm run demo` | the old static demo at http://localhost:8765 (`legacy/demo/`) |
 
-Demo company: `/acme` - log in page at `/acme/login` (visual only until Phase 2).
+Demo company: `/acme`, log in at `/acme/login` with its access code. New companies are added in
+`/admin` and are live immediately - no deploy.
 
 ## Layout
 

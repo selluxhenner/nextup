@@ -14,8 +14,17 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     "legacy/**",
     ".github/ci/**",
-    // Collaborator drop-zone (gitignored): mockups, exports, screenshots.
+    // Collaborator drop-zone (gitignored): mockups, Figma exports, screenshots.
     "uploads/**",
+    // Generated dc-runtime artifacts at the repo root, the pair to NextUp.dc.html. Same reason
+    // legacy/** is ignored - the file says "GENERATED ... do not edit" on line 1 and nothing in
+    // src/ references it. Without this, `npm run lint` fails on main. (Kevin: flagged in the PR.)
+    "support.js",
+    "NextUp.dc.html",
+    // Browser-driven e2e scripts. Same reason .github/ci/** is ignored: they are CommonJS and
+    // resolve playwright from a side install via NODE_PATH, so they are not part of the app's
+    // module system and the app's rules do not apply to them.
+    "tests/e2e/**",
   ]),
 ]);
 

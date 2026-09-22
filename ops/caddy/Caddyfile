@@ -1,0 +1,32 @@
+# Production. One wildcard certificate for the whole tenant space, via DNS-01 at hosttech.
+# Requires HOSTTECH_API_TOKEN and these two DNS records pointing at the box:
+#     A   nextup.serviweb.ch     -> <VPS IP>
+#     A   *.nextup.serviweb.ch   -> <VPS IP>
+{
+	email {$ACME_EMAIL}
+}
+
+{$APP_DOMAIN}, *.{$APP_DOMAIN} {
+	tls {
+		dns hosttech {$HOSTTECH_API_TOKEN}
+	}
+
+	# Reserved hosts. These are NOT tenants - src/features/auth/request.ts keeps the same list,
+	# so a company can never be created with one of these slugs.
+	@n8n host n8n.{$APP_DOMAIN}
+	@mail host mail.{$APP_DOMAIN}
+	handle @n8n {
+		reverse_proxy n8n:5678
+	}
+	handle @mail {
+		reverse_proxy mailpit:8025
+	}
+
+	# Everything else - the apex, www, admin and every company subdomain - is the app. It reads
+	# the Host header itself and rewrites <slug>.<domain> to /<slug>/... in src/proxy.ts.
+	handle {
+		reverse_proxy app:3000
+	}
+
+	encode zstd gzip
+}
