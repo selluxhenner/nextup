@@ -8,6 +8,7 @@
 // keyed by case id), only their count becomes an event fact.
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { ThinkingOrb } from "thinking-orbs";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { SITE } from "@/config/site";
 import type { CaseKind } from "@/features/cases/events";
@@ -23,6 +24,7 @@ const STEP_MS = 1100; // one step per ~1.1 s -> about 9 s for eight steps
 const MAX_SHOTS = 4;
 const MIN_CHARS = 8;
 const PROMPTS = ["Impact", "Who's blocked", "Already tried", "Deadline"];
+const KIND_INK: Record<CaseKind, string> = { idea: "#d9a11a", problem: "#c93a2d" }; // = --k in RaiseView.module.css; the orb tints from a prop, not CSS
 const HOW: { id: "raise" | "context" | "score" | "track"; title: string; text: string }[] = [
   { id: "raise", title: "Raise it", text: "Anyone, from any team, submits an idea or a problem in one line." },
   { id: "context", title: "It reads the context", text: SITE.name + " maps it against your org structure, business model, and goals." },
@@ -46,15 +48,22 @@ export function RaiseView() {
   const [pickQuery, setPickQuery] = useState("");
   const [reading, setReading] = useState(0); // files still being shrunk
   const [phase, setPhase] = useState<Phase>({ at: "edit" });
+  const [reduced, setReduced] = useState(false); // prefers-reduced-motion: the steps land fast and the orb holds still
   const fileRef = useRef<HTMLInputElement>(null);
   const pickRef = useRef<HTMLDivElement>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const sync = () => setReduced(mq.matches);
+    sync(); mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
 
   // The evaluation plays out one step at a time; the case is raised once the last step lands.
   useEffect(() => {
     if (phase.at !== "thinking") return;
     const { ev, done } = phase;
-    const reduced = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     timer.current = setTimeout(() => {
       if (done < ev.steps.length) setPhase({ at: "thinking", ev, done: done + 1 });
       else {
@@ -64,7 +73,7 @@ export function RaiseView() {
       }
     }, reduced ? 150 : STEP_MS);
     return () => { if (timer.current) clearTimeout(timer.current); };
-  }, [phase, act, shots, tenant.slug, showToast]); // shots cannot change while thinking: the box is locked
+  }, [phase, act, shots, tenant.slug, showToast, reduced]); // shots cannot change while thinking: the box is locked
 
   // The affected picker closes on a click outside it or on Escape.
   useEffect(() => {
@@ -265,7 +274,7 @@ export function RaiseView() {
           return (
             <>
               <div className={styles.cardHead}>
-                <h2 className={styles.cardTitle}><span className={styles.orb} data-live={phase.at === "thinking" ? "true" : undefined} aria-hidden="true" />{phase.at === "thinking" ? SITE.name + " is evaluating" : "Evaluated"}</h2>
+                <h2 className={styles.cardTitle}><span className={styles.orb} aria-hidden="true"><ThinkingOrb state="solving" size={20} theme="light" color={KIND_INK[kind]} paused={phase.at !== "thinking" || reduced} /></span>{phase.at === "thinking" ? SITE.name + " is evaluating" : "Evaluated"}</h2>
                 <span className={styles.cardTag}>{phase.at === "thinking" ? Math.min(done, ev.steps.length) + " / " + ev.steps.length : "Score " + ev.score.value}</span>
               </div>
               <ol className={styles.evalSteps} aria-live="polite">

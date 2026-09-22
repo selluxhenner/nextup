@@ -148,9 +148,7 @@
 .prompt:hover { background: #f6f9fa; }
 
 /* NextUp evaluating: the steps landing one after another, then the receipt. */
-.orb { width: 12px; height: 12px; border-radius: 50%; background: var(--k); flex: none; }
-.orb[data-live="true"] { animation: glow 1.1s ease-in-out infinite; }
-@keyframes glow { 0%, 100% { box-shadow: 0 0 0 0 var(--k-tint); } 50% { box-shadow: 0 0 0 8px var(--k-tint); } }
+.orb { display: flex; width: 20px; height: 20px; flex: none; } /* the thinking-orbs canvas, tinted --k from the component; still while evaluated */
 .evalSteps { list-style: none; margin: 0; padding: 12px clamp(12px, 2vw, 22px) 14px; display: flex; flex-direction: column; gap: 4px; }
 .evalStep { display: flex; align-items: flex-start; gap: 10px; padding: 7px 8px; border-radius: var(--nh-r-sm); transition: background 0.2s ease, opacity 0.2s ease; }
 .evalStep[data-state="todo"] { opacity: 0.35; }
@@ -174,7 +172,7 @@
 .again:hover { color: var(--nh-ink); }
 
 @media (prefers-reduced-motion: reduce) {
-  .aura, .ringWash, .pulse, .send[data-sent="true"], .arrow, .check, .orb[data-live="true"], .evalStep[data-state="now"] .mark, .evalStep[data-state="done"], .banner { animation: none; }
+  .aura, .ringWash, .pulse, .send[data-sent="true"], .arrow, .check, .evalStep[data-state="now"] .mark, .evalStep[data-state="done"], .banner { animation: none; }
   .send[data-sent="true"] .arrow { opacity: 0; }
   .send[data-sent="true"] .check { opacity: 1; }
 }
