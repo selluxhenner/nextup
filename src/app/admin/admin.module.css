@@ -53,6 +53,9 @@
 .rowName { font-weight: 600; }
 .rowMeta { font-size: 0.85rem; color: var(--nh-ink-mute, #6b7280); }
 .rowMeta a { color: inherit; }
+.row[data-handled] { opacity: 0.55; }
+.decision { font-size: 0.95rem; }
+.rowMessage { margin: 4px 0 2px; font-size: 0.9rem; color: var(--nh-ink-2); white-space: pre-wrap; max-width: 60ch; }
 
 .stage {
   font-size: 0.75rem;

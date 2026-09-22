@@ -1,7 +1,7 @@
 // PRIVACY POLICY / Datenschutzerklärung (Art. 13 DSGVO). German text is binding; English summary on top.
-// Facts this page states - no cookies, no tracking, fonts self-hosted, contact form opens the visitor's
-// own mail program - must stay true. If you add analytics, a session cookie or a backend for the form,
-// update this page in the same PR.
+// Facts this page states - no cookies, no tracking, fonts self-hosted, the contact form is stored on
+// our own server only to reply (src/server/actions/pilot.ts) - must stay true. If you add analytics,
+// a session cookie or a third party to the form, update this page in the same PR.
 import type { Metadata } from "next";
 import Link from "next/link";
 import { LEGAL, SITE } from "@/config/site";
@@ -48,7 +48,7 @@ export default function PrivacyPage() {
             <ul>
               <li>Diese Website setzt <strong>keine Cookies</strong> und verwendet <strong>keine Analyse- oder Tracking-Werkzeuge</strong>. Deshalb gibt es auch kein Cookie-Banner.</li>
               <li>Es werden <strong>keine Inhalte von Drittanbietern</strong> nachgeladen. Schriften werden von diesem Server ausgeliefert, nicht von Google oder einem anderen Dienst.</li>
-              <li>Das Kontaktformular sendet nichts an diese Website. Es öffnet einen vorausgefüllten Entwurf in Ihrem eigenen E-Mail-Programm.</li>
+              <li>Das Kontaktformular speichert Ihre Angaben auf unserem eigenen Server - nur, damit wir antworten können. Kein Dritter erhält sie.</li>
               <li>Personenbezogene Daten werden nur verarbeitet, soweit es für den Betrieb der Seite technisch nötig ist oder Sie uns selbst schreiben.</li>
             </ul>
           </section>
@@ -108,12 +108,12 @@ export default function PrivacyPage() {
           <section>
             <h2>6. Kontaktaufnahme</h2>
             <p>
-              Das Formular auf der Seite <Link href="/contact">Book a pilot</Link> überträgt keine Daten an diese
-              Website. Beim Absenden öffnet Ihr Browser Ihr eigenes E-Mail-Programm mit einem vorausgefüllten Entwurf;
-              erst wenn Sie diese E-Mail selbst versenden, erreichen uns Ihre Angaben.
+              Das Formular auf der Seite <Link href="/contact">Book a pilot</Link> überträgt Ihre Angaben an unseren
+              eigenen Server und speichert sie dort in unserer Datenbank. Es werden keine Drittanbieter eingebunden;
+              ein verstecktes Feld dient nur der Erkennung automatisierter Eingaben und wird nicht gespeichert.
             </p>
             <p>
-              Wenn Sie uns per E-Mail schreiben, verarbeiten wir die von Ihnen mitgeteilten Daten (Name, E-Mail-Adresse,
+              Ob über das Formular oder per E-Mail: wir verarbeiten die von Ihnen mitgeteilten Daten (Name, E-Mail-Adresse,
               Unternehmen, Inhalt der Nachricht) ausschließlich zur Bearbeitung Ihrer Anfrage und für eventuelle
               Anschlussfragen. <strong>Rechtsgrundlage</strong>: Art. 6 Abs. 1 lit. b DSGVO (Anbahnung eines Pilotprojekts)
               bzw. Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse an der Beantwortung von Anfragen).{" "}
@@ -182,8 +182,7 @@ export default function PrivacyPage() {
             <h2>11. Änderungen dieser Erklärung</h2>
             <p>
               Wir passen diese Datenschutzerklärung an, wenn sich die Website oder die Rechtslage ändert - etwa wenn
-              ein Hosting-Anbieter benannt wird, Benutzerkonten aktiviert werden oder das Kontaktformular über einen
-              eigenen Server versendet. Das Datum der letzten Änderung steht am Anfang dieser Seite.
+              ein Hosting-Anbieter benannt wird oder Benutzerkonten aktiviert werden. Das Datum der letzten Änderung steht am Anfang dieser Seite.
             </p>
           </section>
         </div>
@@ -196,7 +195,7 @@ export default function PrivacyPage() {
             <li className={styles.no}>No cookies, no analytics, no tracking - so no cookie banner.</li>
             <li className={styles.no}>No third-party requests: fonts are served from this site, not Google.</li>
             <li>Server logs (IP, time, page) are kept up to 14 days for security - Art. 6(1)(f) GDPR.</li>
-            <li>The contact form opens your own mail program; nothing is stored here.</li>
+            <li>The contact form is stored on our own server, only to reply to you - no third party sees it.</li>
             <li>The app is a demo with fictional data. Pilots run under a data processing agreement; no per-person metrics; data stays in the EU.</li>
             <li>You can ask for access, correction, deletion or export at any time by e-mail, and complain to the Berlin data protection authority.</li>
           </ul>

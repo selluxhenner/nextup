@@ -154,3 +154,22 @@ model ApiToken {
 
   @@index([companyId])
 }
+
+// A pilot request from the public /contact form. Not a tenant table: the company named here is
+// free text typed by a stranger, not a Company row - it becomes one only when someone in /admin
+// decides so. Nothing is ever updated except `handledAt`, which is the one fact worth recording.
+model PilotRequest {
+  id String @id @default(cuid())
+
+  name     String
+  company  String
+  email    String
+  decision String
+  council  String // no | yes | not sure - src/features/pilot/request.ts
+  message  String @default("")
+
+  createdAt DateTime  @default(now())
+  handledAt DateTime?
+
+  @@index([createdAt])
+}

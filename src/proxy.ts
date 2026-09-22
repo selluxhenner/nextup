@@ -11,12 +11,15 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_COOKIE, ADMIN_COOKIE, verifyAdmin, verifySession } from "@/features/auth/cookie";
 import { decide, resolveRequest, type TenantMode } from "@/features/auth/request";
+import { hasDatabase } from "@/lib/db/mode";
 
 export function proxy(request: NextRequest) {
   const secret = process.env.AUTH_SECRET;
   // No secret configured: behave exactly as this file did before sessions existed. That is what
   // keeps `next build`, `npm test` and a database-less `npm run dev` working.
-  if (!secret) return NextResponse.next();
+  // No database (unset, or set but not answering): sessions cannot be issued, so demanding one
+  // would only lock everyone out of the demo. mode.ts, not client.ts - no Prisma in the proxy.
+  if (!secret || !hasDatabase()) return NextResponse.next();
 
   const url = request.nextUrl;
   const host = request.headers.get("host") ?? "";

@@ -23,6 +23,9 @@
   --nh-brand-line: #b8d9ff;
   --nh-brand-2: var(--nh-brand-hover); /* compatibility alias for existing components */
   --nh-ok: #2f8f5b;
+  --nh-ok-tint: #edf7f0;
+  --nh-danger: #b3261e;      /* a field that will not go through; admin's destructive actions */
+  --nh-danger-tint: #fdf1f0;
   /* The signed-in app: light grey ground, white cards that float on a soft shadow instead of a border. */
   --nh-app-ground: #f5f5f7;
   --nh-card-shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 8px 24px -12px rgb(0 0 0 / 0.12);

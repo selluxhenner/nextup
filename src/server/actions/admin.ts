@@ -4,6 +4,7 @@
 // Deliberately OUTSIDE the [company] segment and outside the role system. src/config/roles.ts has
 // three roles and they are all per-company; a fourth "superadmin" role would change the meaning of
 // every ROLE_ACCESS row. Instead /admin sits behind its own cookie, unlocked by ADMIN_ACCESS_CODE.
+import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { timingSafeEqual } from "node:crypto";
@@ -227,4 +228,52 @@ function companyUrl(slug: string): string {
   return process.env.TENANT_MODE === "subdomain"
     ? `${scheme}://${slug}.${domain}`
     : `${scheme}://${domain}/${slug}`;
+}
+
+// ---- Pilot requests from /contact ---------------------------------------------------------------
+
+export type PilotRequestRow = {
+  id: string;
+  name: string;
+  company: string;
+  email: string;
+  decision: string;
+  council: string;
+  message: string;
+  createdAt: string;
+  handledAt: string | null;
+};
+
+/** Newest first, open ones before handled ones. Everything the form saved, nothing more. */
+export async function listPilotRequests(): Promise<PilotRequestRow[]> {
+  if (!(await isAdmin()) || !hasDatabase()) return [];
+  const rows = await getDb().pilotRequest.findMany({
+    orderBy: [{ handledAt: { sort: "asc", nulls: "first" } }, { createdAt: "desc" }],
+    take: 100,
+  });
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    company: r.company,
+    email: r.email,
+    decision: r.decision,
+    council: r.council,
+    message: r.message,
+    createdAt: r.createdAt.toISOString(),
+    handledAt: r.handledAt?.toISOString() ?? null,
+  }));
+}
+
+export type HandledState = { error?: string };
+
+/** The one update PilotRequest allows: it was replied to. Toggles, so a slip can be undone. */
+export async function markPilotRequestHandled(_prev: HandledState, form: FormData): Promise<HandledState> {
+  if (!(await isAdmin())) return { error: "Not signed in to the admin area." };
+  if (!hasDatabase()) return { error: "No database is configured." };
+
+  const id = String(form.get("id") ?? "");
+  const handled = String(form.get("handled") ?? "") === "1";
+  await getDb().pilotRequest.update({ where: { id }, data: { handledAt: handled ? new Date() : null } });
+  revalidatePath("/admin");
+  return {};
 }

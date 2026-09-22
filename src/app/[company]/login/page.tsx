@@ -4,8 +4,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AuthShell, AuthTitle, AuthFoot, AuthStats } from "@/components/auth/AuthShell";
 import { CompanyLoginForm } from "@/components/auth/CompanyLoginForm";
+import { Button } from "@/components/ui/Button";
 import { Divider } from "@/components/ui/Divider";
 import { findTenant } from "@/features/tenant";
+import { hasDatabase } from "@/lib/db/client";
 import { SITE } from "@/config/site";
 import styles from "@/components/auth/forms.module.css";
 
@@ -42,9 +44,19 @@ export default async function CompanyLoginPage({ params, searchParams }: Props) 
         <Link className={styles.switch} href="/login">Not your company?</Link>
       </div>
 
-      <AuthTitle title="Welcome back" sub={`Log in with your ${short} account.`} />
-
-      <CompanyLoginForm slug={tenant.slug} short={short} next={next} />
+      {hasDatabase() ? (
+        <>
+          <AuthTitle title="Welcome back" sub={`Log in with your ${short} account.`} />
+          <CompanyLoginForm slug={tenant.slug} short={short} next={next} />
+        </>
+      ) : (
+        // No database, so there is no one to sign in as: a laptop without Postgres. The demo
+        // needs no login - send them straight in rather than to a form that can only say no.
+        <>
+          <AuthTitle title="Demo mode" sub="No database is connected, so there is nothing to log in to. The built-in demo works without one." />
+          <Button href={`/${tenant.slug}`} block>Open the {short} demo</Button>
+        </>
+      )}
 
       <Divider />
       <button className="nh-btn nh-btn-ghost nh-btn-block" type="button" disabled>
