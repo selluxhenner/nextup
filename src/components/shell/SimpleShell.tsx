@@ -5,6 +5,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useLayoutEffect, useRef, useState } from "react";
 import { NAV_SIMPLE } from "@/config/nav";
 import { SITE } from "@/config/site";
 import { useDemo } from "@/components/dashboard/DemoProvider";
@@ -20,6 +21,22 @@ export function SimpleShell({ children }: { children: React.ReactNode }) {
   const { tenant, role, persona, actor, email, pop, setPop, togglePop, sheet, toast, logout, D } = ctx;
   const pathname = usePathname();
   const who = persona.who;
+  // The ink thumb slides under the current place: measured from the active link, re-measured on resize.
+  const navRef = useRef<HTMLElement>(null);
+  const [thumb, setThumb] = useState<{ x: number; w: number } | null>(null);
+  useLayoutEffect(() => {
+    const nav = navRef.current;
+    if (!nav) return;
+    const measure = () => {
+      const on = nav.querySelector<HTMLElement>('[aria-current="page"]');
+      setThumb(on ? { x: on.offsetLeft, w: on.offsetWidth } : null);
+    };
+    measure();
+    const ro = new ResizeObserver(measure); ro.observe(nav);
+    nav.querySelectorAll<HTMLElement>("a").forEach((a) => ro.observe(a)); // the links reflow before the nav does
+    window.addEventListener("resize", measure);
+    return () => { ro.disconnect(); window.removeEventListener("resize", measure); };
+  }, [pathname, role]);
   const anon = actor !== who.name; // the employee posts under a handle
   const mine = mineRows(ctx);
   const shipped = mine.filter((m) => m.status === "Shipped").length;
@@ -44,7 +61,8 @@ export function SimpleShell({ children }: { children: React.ReactNode }) {
           <Image src="/brand/nextup-logo-black.png" alt={SITE.name} width={494} height={212} className={styles.logo} priority />
         </Link>
 
-        <nav className={styles.nav} aria-label="Main">
+        <nav ref={navRef} className={styles.nav} aria-label="Main">
+          {thumb && <span className={styles.navThumb} style={{ transform: "translateX(" + thumb.x + "px)", width: thumb.w }} aria-hidden="true" />}
           {NAV_SIMPLE[role].map((n) => {
             const href = "/" + tenant.slug + n.href;
             const active = pathname === href || pathname.startsWith(href + "/");
