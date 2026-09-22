@@ -14,6 +14,7 @@ import type { CaseKind } from "@/features/cases/events";
 import { evaluate, type Evaluation } from "@/features/evaluate";
 import { saveShots, shrinkImage, type Shot } from "@/lib/shots";
 import styles from "./RaiseView.module.css";
+import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 
 const KINDS: { id: CaseKind; label: string; placeholder: string }[] = [
   { id: "idea", label: "Idea", placeholder: "Share an idea that would make work better…" },
@@ -75,7 +76,7 @@ export function RaiseView() {
     return () => { document.removeEventListener("mousedown", onDown); document.removeEventListener("keydown", onKey); };
   }, [pickOpen]);
 
-  if (!ready) return <div className={styles.loading} />;
+  if (!ready) return <PageSkeleton kind="raise" />;
 
   const who = persona.who;
   const current = KINDS.find((k) => k.id === kind) ?? KINDS[0];

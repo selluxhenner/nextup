@@ -8,11 +8,12 @@ import { contributors, funnel, stalled } from "@/features/metrics";
 import { fmt } from "@/lib/utils/format";
 import ui from "@/components/dashboard/shared/ui.module.css";
 import styles from "./ProgressView.module.css";
+import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 
 export function ProgressView() {
   const ctx = useDemo();
   const { seed, D, N, demo, persona, ready } = ctx;
-  if (!ready) return <div className={ui.loading} />;
+  if (!ready) return <PageSkeleton kind="list" />;
   const M = seed.metrics, P = seed.promiseDays, O = seed.outcomeDays;
   const steps = funnel(N);
   const stuck = stalled(D);

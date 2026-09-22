@@ -11,6 +11,7 @@ import { Avatar, Pill, statusTone } from "@/components/dashboard/shared/primitiv
 import { dashboardRow, type DashRow } from "@/features/cases/rows";
 import { scoreBand } from "@/features/scoring";
 import styles from "./DashboardView.module.css";
+import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 
 type Filter = "all" | "problem" | "idea" | "mine";
 type Sort = "score" | "open" | "new";
@@ -28,7 +29,7 @@ export function DashboardView() {
   const { seed, D, log, persona, role, ready, href } = ctx;
   const [filter, setFilter] = useState<Filter>("all");
   const [sort, setSort] = useState<Sort>("score");
-  if (!ready) return <div className={styles.loading} />;
+  if (!ready) return <PageSkeleton kind="dashboard" />;
 
   const who = persona.who;
   const rows = D.cases.filter((c) => visibleTo(ctx, c)).map((c) => dashboardRow(c, seed.promiseDays, who, log));

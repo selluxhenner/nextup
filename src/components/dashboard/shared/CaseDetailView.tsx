@@ -16,6 +16,7 @@ import { scoreBand, scoreCase } from "@/features/scoring";
 import { loadShots } from "@/lib/shots";
 import ui from "@/components/dashboard/shared/ui.module.css";
 import styles from "./CaseDetailView.module.css";
+import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 
 const STATUS_LABEL = { open: "Sent", asked: "Question for you", decided: "Decided", building: "Building", shipped: "Shipped" } as const;
 
@@ -44,7 +45,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
   const [why, setWhy] = useState(""); // the reason behind "affects my team too" / the new information behind a re-evaluation
   const [asking, setAsking] = useState(false); // the why field is open
   const [big, setBig] = useState<number | null>(null); // index of the screenshot shown full size
-  if (!ready) return <div className={ui.loading} />;
+  if (!ready) return <PageSkeleton kind="detail" />;
   const c = S.cases.find((x) => x.id === caseId);
   // Someone else's case reads exactly like a missing one - the title is not leaked either way.
   if (!c || !canOpen(ctx, c)) {

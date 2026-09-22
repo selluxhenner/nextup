@@ -1,7 +1,6 @@
 /* The list. One row per case; a stripe on the left edge carries the kind (problem / idea) so
    the column layout stays the same for both. Orange only where time is the story (overdue). */
 .page { display: flex; flex-direction: column; gap: 14px; }
-.loading { min-height: 40vh; }
 
 .head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 .title { font-size: 28px; font-weight: 700; letter-spacing: -0.025em; }

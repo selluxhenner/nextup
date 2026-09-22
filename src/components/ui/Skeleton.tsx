@@ -8,7 +8,7 @@ type Props = {
   h?: CSSProperties["height"];
   /** Corner: sm (default) for text lines, md/lg for cards, pill for chips, circle for avatars. */
   r?: "sm" | "md" | "lg" | "pill" | "circle";
-  /** On a dark panel the box is a lighter dark, not grey. */
+  /** On a dark or coloured panel the box is a light wash, not grey. */
   dark?: boolean;
   className?: string;
   style?: CSSProperties;

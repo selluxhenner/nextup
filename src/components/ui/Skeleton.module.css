@@ -4,7 +4,7 @@
 .box[data-r="lg"] { border-radius: var(--nh-r-lg); }
 .box[data-r="pill"] { border-radius: 999px; }
 .box[data-r="circle"] { border-radius: 50%; }
-.dark { background: var(--nh-dark-line); }
+.dark { background: rgb(255 255 255 / 0.28); } /* on a dark or blue panel: a lighter wash, not grey */
 
 @keyframes pulse {
   0%, 100% { opacity: 1; }

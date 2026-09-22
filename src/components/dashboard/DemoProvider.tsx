@@ -61,6 +61,7 @@ export type DemoContext = {
   tenant: TenantInfo;
   seed: Seed;
   ready: boolean;
+  serverMode: boolean; // a session and Postgres behind the page; false = the localStorage demo
   S: State; D: DemoData; N: Counts; log: EventLog;
   role: Role; setRole: (r: Role) => void;
   leadAs: string | null; setLeadAs: (name: string) => void;
@@ -87,11 +88,13 @@ export function useDemo(): DemoContext {
   return c;
 }
 
-// First visit: the URL says which role the visitor meant (/leader -> leader, /raise, /dashboard or /team -> member).
+// First visit: the URL says which role the visitor meant (/manager or /settings -> manager, /leader -> leader).
+// Everything else - the front door /[company] included - starts as the employee: the login sends
+// people in there, and the employee's Raise page is where every case begins.
 function roleFromPath(path: string): Role {
+  if (path === "/manager" || path.startsWith("/manager/") || path === "/settings" || path.startsWith("/settings/")) return "manager";
   if (path === "/leader" || path.startsWith("/leader/")) return "leader";
-  if (path === "/raise" || path === "/dashboard" || path === "/team" || path.startsWith("/team/")) return "member";
-  return "manager";
+  return "member";
 }
 
 const iniOf = (name: string) => name.split(" ").map((w) => w[0]).join("").slice(0, 2);
@@ -419,7 +422,7 @@ export function DemoProvider({ tenant, seed, initialLog, viewer, children }: Pro
   }, [S, showToast]);
 
   const value: DemoContext = {
-    tenant, seed, ready, S, D, N, log,
+    tenant, seed, ready, serverMode, S, D, N, log,
     role, setRole, leadAs, setLeadAs, persona, actor, email,
     demo, toggleDemo: () => setPrefs(slug, { demo: !demo }),
     dept, setDept: (id) => { setPrefs(slug, { dept: id }); setMenu(false); }, matches: (depts) => dept === "All" || depts.includes(dept), deptName,

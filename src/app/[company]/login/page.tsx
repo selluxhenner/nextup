@@ -52,9 +52,10 @@ export default async function CompanyLoginPage({ params, searchParams }: Props) 
       ) : (
         // No database, so there is no one to sign in as: a laptop without Postgres. The demo
         // needs no login - send them straight in rather than to a form that can only say no.
+        // `?as=member`: through the login you always arrive as the employee (RoleRouter).
         <>
           <AuthTitle title="Demo mode" sub="No database is connected, so there is nothing to log in to. The built-in demo works without one." />
-          <Button href={`/${tenant.slug}`} block>Open the {short} demo</Button>
+          <Button href={`/${tenant.slug}?as=member`} block>Open the {short} demo</Button>
         </>
       )}
 

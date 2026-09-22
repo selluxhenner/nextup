@@ -12,6 +12,7 @@ import type { IdeaStatus } from "@/features/demo/types";
 import { hits, ideaHay, tokens } from "@/features/search";
 import ui from "@/components/dashboard/shared/ui.module.css";
 import styles from "./IdeasView.module.css";
+import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 
 const SORTS: { id: IdeaSort; label: string }[] = [
   { id: "score", label: "Most criteria met" }, { id: "wait", label: "Longest waiting" }, { id: "upside", label: "Biggest upside" }, { id: "title", label: "A → Z" },
@@ -24,7 +25,7 @@ export function IdeasView({ initialId }: { initialId?: string }) {
   const [iid, setIid] = useState<string | null>(initialId ?? null);
   const [sort, setSort] = useState<IdeaSort>("score");
   const [status, setStatus] = useState("All");
-  if (!ready) return <div className={ui.loading} />;
+  if (!ready) return <PageSkeleton kind="list" />;
 
   const isEmployee = role === "member";
   const toks = tokens(q), hasQuery = toks.length > 0;

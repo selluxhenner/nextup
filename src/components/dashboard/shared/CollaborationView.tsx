@@ -13,6 +13,7 @@ import { chainEdges, coworkersOf, layoutTree, namedMembers, pairs, projectsOf, v
 import { ini } from "@/lib/utils/format";
 import ui from "@/components/dashboard/shared/ui.module.css";
 import styles from "./CollaborationView.module.css";
+import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 
 type Sel = { kind: "project"; id: string } | { kind: "person"; name: string } | { kind: "none" };
 type TreeMode = "chain" | "lines";
@@ -153,7 +154,7 @@ export function CollaborationView({ initialId }: { initialId?: string }) {
   // People window tools.
   const [hq, setHq] = useState(""), [hSort, setHSort] = useState<PersonSort>("name"), [hDept, setHDept] = useState("All"), [hScope, setHScope] = useState<PeopleScope>("linked"), [hPage, setHPage] = useState(0);
   const pSize = PROJECT_PAGE, hSize = PEOPLE_PAGE;
-  if (!ready) return <div className={ui.loading} />;
+  if (!ready) return <PageSkeleton kind="list" />;
 
   const byName = new Map(D.people.map((p) => [p.name, p]));
   // A member who has no org row (a name the seed forgot) still gets a card: role from the initiative.

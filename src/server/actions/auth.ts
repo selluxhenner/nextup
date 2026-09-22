@@ -67,16 +67,17 @@ async function checkAccessCode(_prev: LoginState, form: FormData): Promise<Login
     return { step: "code", error: "This company has no people yet. Add them in the admin page first." };
   }
 
-  return {
-    step: "who",
-    code,
-    people: company.users.map((u) => ({
-      id: u.id,
-      name: u.name,
-      role: u.role as Role,
-      line: u.line || u.dept,
-    })),
-  };
+  return { step: "who", code, people: peopleOf(company.users) };
+}
+
+// The "who are you" list: employees first, then team leaders, then managers - each group by name.
+// The first entry is preselected, so whoever logs in without thinking lands as an employee, the
+// role every case starts from. A manager scrolls; there are far fewer of them.
+const ROLE_ORDER: Record<Role, number> = { member: 0, leader: 1, manager: 2 };
+function peopleOf(users: { id: string; name: string; role: string; line: string; dept: string }[]): LoginPerson[] {
+  return users
+    .map((u) => ({ id: u.id, name: u.name, role: u.role as Role, line: u.line || u.dept }))
+    .sort((a, b) => (ROLE_ORDER[a.role] ?? 9) - (ROLE_ORDER[b.role] ?? 9) || a.name.localeCompare(b.name));
 }
 
 /** Step 2: the code again (so this cannot be called on its own) plus who you are. */
@@ -95,12 +96,7 @@ async function signIn(_prev: LoginState, form: FormData): Promise<LoginState> {
 
   const user = company.users.find((u) => u.id === userId);
   if (!user) {
-    return {
-      step: "who",
-      code,
-      people: company.users.map((u) => ({ id: u.id, name: u.name, role: u.role as Role, line: u.line || u.dept })),
-      error: "Pick who you are.",
-    };
+    return { step: "who", code, people: peopleOf(company.users), error: "Pick who you are." };
   }
 
   const role = user.role as Role;

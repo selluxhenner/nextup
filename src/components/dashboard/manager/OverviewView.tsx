@@ -10,11 +10,12 @@ import { decisionsWaiting, overridesLabel } from "@/features/metrics";
 import { ownerLabel } from "@/features/search";
 import ui from "@/components/dashboard/shared/ui.module.css";
 import styles from "./OverviewView.module.css";
+import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 
 export function OverviewView() {
   const ctx = useDemo();
   const { seed, S, D, N, log, demo, href, deptName, ready } = ctx;
-  if (!ready) return <div className={ui.loading} />;
+  if (!ready) return <PageSkeleton kind="overview" />;
   const P = seed.promiseDays, M = seed.metrics, L = seed.ledger;
   const dash = (v: string) => (demo ? v : "—");
   const was = (str: string) => parseInt(String(str).replace(/[^\d]/g, ""), 10);

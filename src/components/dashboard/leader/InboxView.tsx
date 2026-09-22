@@ -11,13 +11,14 @@ import { ViewHead } from "@/components/dashboard/shared/ViewHead";
 import { actedBy } from "@/features/cases/selectors";
 import ui from "@/components/dashboard/shared/ui.module.css";
 import styles from "./InboxView.module.css";
+import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 
 export function InboxView({ initialId }: { initialId?: string }) {
   const ctx = useDemo();
   const { seed, D, demo, persona, act, openSheet, showToast, ready, f, href } = ctx;
   // Selection: the page remounts this view (key = ?id) when a search result or link picks a case.
   const [cid, setCid] = useState<string | null>(initialId ?? null);
-  if (!ready) return <div className={ui.loading} />;
+  if (!ready) return <PageSkeleton kind="inbox" />;
 
   const who = persona.who, P = seed.promiseDays;
   const desk = deskCases(ctx), open = openCases(ctx);

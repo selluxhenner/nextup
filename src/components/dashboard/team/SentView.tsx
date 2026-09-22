@@ -9,6 +9,7 @@ import { mineRows } from "@/components/dashboard/derive";
 import { Pill, statusTone } from "@/components/dashboard/shared/primitives";
 import type { MineRow, MineStatus } from "@/features/cases/rows";
 import styles from "./SentView.module.css";
+import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 
 // The four steps in the words an employee uses, not the system's.
 const STEP_LABEL: Record<string, string> = { "Sent": "Sent", "Read by a human": "Read", "Decided": "Answered", "Shipped": "Live" };
@@ -20,7 +21,7 @@ const STATUS_LABEL: Partial<Record<MineStatus, string>> = {
 export function SentView() {
   const ctx = useDemo();
   const { seed, ready, href, openSheet } = ctx;
-  if (!ready) return <div className={styles.loading} />;
+  if (!ready) return <PageSkeleton kind="list" />;
 
   const P = seed.promiseDays;
   const mine = mineRows(ctx);
