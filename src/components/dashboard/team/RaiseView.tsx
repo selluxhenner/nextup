@@ -8,8 +8,8 @@
 // keyed by case id), only their count becomes an event fact.
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { ThinkingOrb } from "thinking-orbs";
 import { useDemo } from "@/components/dashboard/DemoProvider";
+import { EvalOrb } from "@/components/dashboard/team/EvalOrb";
 import { SITE } from "@/config/site";
 import type { CaseKind } from "@/features/cases/events";
 import { evaluate, type Evaluation } from "@/features/evaluate";
@@ -25,8 +25,7 @@ const MAX_SHOTS = 4;
 const MIN_CHARS = 8;
 const PICK_PAGE = 5; // rows per page in the affected picker; longer lists page instead of scrolling
 const PROMPTS = ["Impact", "Who's blocked", "Already tried", "Deadline"];
-const INK = "#141414"; // = --nh-ink in tokens.css; the orb tints from a prop, not CSS
-const ORB_PX = 96; // the 64 preset is the largest tuned one; it is drawn at 64 and shown at this size
+const ORB_PX = 96;
 const HOW: { id: "raise" | "context" | "score" | "track"; title: string; text: string }[] = [
   { id: "raise", title: "Raise it", text: "Anyone, from any team, submits an idea or a problem in one line." },
   { id: "context", title: "It reads the context", text: SITE.name + " maps it against your org structure, business model, and goals." },
@@ -328,7 +327,7 @@ export function RaiseView() {
                   const thinking = at >= 0, now = thinking ? ev.steps[at] : null;
                   return (
                     <div className={styles.evalCenter}>
-                      <span className={styles.orb} aria-hidden="true"><ThinkingOrb state="connecting" size={64} style={{ width: ORB_PX, height: ORB_PX }} opts={{ spread: 1.15 }} theme="light" color={INK} paused={!thinking || reduced} /></span>
+                      <span className={styles.orb} aria-hidden="true"><EvalOrb state="connecting" size={ORB_PX} paused={!thinking || reduced} /></span>
                       <h2 className={styles.evalHead}>{thinking ? "Evaluating" : "Evaluated"}</h2>
                       <p className={styles.evalNow} aria-live="polite">
                         {now ? <>{now.title}<span className={styles.evalN}>{at + 1} / {ev.steps.length}</span></> : <>Score {ev.score.value}<span className={styles.evalN}>{ev.steps.length} checks</span></>}
@@ -341,13 +340,13 @@ export function RaiseView() {
                         </ol>
                       )}
                       {phase.at === "done" && (
-                        <div className={styles.banner} role="status">
-                          <p className={styles.bannerSub}>
+                        <div className={styles.receipt} role="status">
+                          <p className={styles.receiptText}>
                             On <strong>{ev.lead}</strong>’s desk{ev.passesTo ? <>, passed to <strong>{ev.passesTo}</strong> if it is theirs</> : null}. Answer owed in {seed.promiseDays} d — it stays on the dashboard until then.
                           </p>
-                          <div className={styles.bannerRow}>
-                            <Link href={href("/dashboard")} className="nh-btn nh-btn-primary nh-btn-sm">See it on the dashboard</Link>
-                            <Link href={href("/cases/" + phase.id)} className="nh-btn nh-btn-ghost nh-btn-sm">Open the case</Link>
+                          <div className={styles.receiptRow}>
+                            <Link href={href("/dashboard")} className={styles.receiptGo}>See it on the dashboard</Link>
+                            <Link href={href("/cases/" + phase.id)} className={styles.receiptOpen}>Open the case</Link>
                             <button type="button" className={styles.again} onClick={reset}>Raise another</button>
                           </div>
                         </div>
