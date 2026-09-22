@@ -332,6 +332,13 @@ export function RaiseView() {
                       <p className={styles.evalNow} aria-live="polite">
                         {now ? <>{now.title}<span className={styles.evalN}>{at + 1} / {ev.steps.length}</span></> : <>Score {ev.score.value}<span className={styles.evalN}>{ev.steps.length} checks</span></>}
                       </p>
+                      {/* While thinking: what the last landed step found, and the eight steps as a track. Once raised the receipt takes their place. */}
+                      {thinking && at > 0 && <p key={ev.steps[at - 1].id} className={styles.evalDetail}>{ev.steps[at - 1].detail}</p>}
+                      {thinking && (
+                        <ol className={styles.evalTrack} aria-label="Evaluation steps">
+                          {ev.steps.map((s, i) => <li key={s.id} className={styles.evalSeg} data-state={i < at ? "done" : i === at ? "now" : "todo"} title={s.title} />)}
+                        </ol>
+                      )}
                       {phase.at === "done" && (
                         <div className={styles.banner} role="status">
                           <p className={styles.bannerSub}>
