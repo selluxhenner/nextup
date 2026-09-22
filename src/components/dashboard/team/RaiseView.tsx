@@ -23,6 +23,7 @@ const KINDS: { id: CaseKind; label: string; placeholder: string }[] = [
 const STEP_MS = 1100; // one step per ~1.1 s -> about 9 s for eight steps
 const MAX_SHOTS = 4;
 const MIN_CHARS = 8;
+const PICK_PAGE = 5; // rows per page in the affected picker; longer lists page instead of scrolling
 const PROMPTS = ["Impact", "Who's blocked", "Already tried", "Deadline"];
 const INK = "#141414"; // = --nh-ink in tokens.css; the orb tints from a prop, not CSS
 const HOW: { id: "raise" | "context" | "score" | "track"; title: string; text: string }[] = [
@@ -33,7 +34,7 @@ const HOW: { id: "raise" | "context" | "score" | "track"; title: string; text: s
 ];
 
 type Phase = { at: "edit" } | { at: "thinking"; ev: Evaluation; done: number } | { at: "done"; ev: Evaluation; id: string };
-type Pick = { id: string; label: string; meta: string };
+type Pick = { id: string; label: string; meta: string; dept?: string }; // dept: a department row, expandable to its people
 
 export function RaiseView() {
   const ctx = useDemo();
@@ -46,6 +47,8 @@ export function RaiseView() {
   const [affected, setAffected] = useState<string[]>([]);
   const [pickOpen, setPickOpen] = useState(false);
   const [pickQuery, setPickQuery] = useState("");
+  const [pickPages, setPickPages] = useState<Record<string, number>>({}); // page per group, keyed by group label or dept id
+  const [openDept, setOpenDept] = useState<string | null>(null); // department row expanded to its people
   const [reading, setReading] = useState(0); // files still being shrunk
   const [phase, setPhase] = useState<Phase>({ at: "edit" });
   const [reduced, setReduced] = useState(false); // prefers-reduced-motion: the steps land fast and the orb holds still
@@ -99,8 +102,16 @@ export function RaiseView() {
   const hit = (p: Pick) => !q || p.label.toLowerCase().includes(q) || p.meta.toLowerCase().includes(q);
   const groups: { label: string; items: Pick[] }[] = [
     { label: "People", items: seed.people.filter((p) => p.name !== who.name).map((p) => ({ id: p.name, label: p.name, meta: p.role + " · " + p.dept })).filter(hit) },
-    { label: "Departments", items: seed.depts.map((d) => ({ id: d.name, label: d.name, meta: d.people + " people" })).filter(hit) },
+    { label: "Departments", items: seed.depts.map((d) => ({ id: d.name, label: d.name, meta: d.people + " people", dept: d.id })).filter(hit) },
   ].filter((g) => g.items.length > 0);
+  const inDept = (id: string): Pick[] => seed.people.filter((p) => p.dept === id && p.name !== who.name).map((p) => ({ id: p.name, label: p.name, meta: p.role }));
+  // Lists longer than a page are paged, not scrolled; the page is clamped so a narrower search never lands on an empty page.
+  const pageOf = <T,>(key: string, items: T[]) => {
+    const pages = Math.max(1, Math.ceil(items.length / PICK_PAGE));
+    const page = Math.min(pickPages[key] ?? 0, pages - 1);
+    return { page, pages, rows: items.slice(page * PICK_PAGE, (page + 1) * PICK_PAGE) };
+  };
+  const turnPage = (key: string, to: number) => setPickPages((p) => ({ ...p, [key]: to }));
 
   // Picked files are shrunk to small data URLs right away, so the preview and what gets stored are the same bytes.
   const addShots = (files: FileList | null) => {
@@ -122,8 +133,25 @@ export function RaiseView() {
     setPhase({ at: "thinking", ev, done: 0 });
   };
   const reset = () => {
-    setDraft(""); setContext(""); setShots([]); setAffected([]); setPickQuery(""); setPickOpen(false); setPhase({ at: "edit" });
+    setDraft(""); setContext(""); setShots([]); setAffected([]); setPickQuery(""); setPickPages({}); setOpenDept(null); setPickOpen(false); setPhase({ at: "edit" });
   };
+
+  const pickRow = (it: Pick) => {
+    const on = affected.includes(it.id);
+    return (
+      <button key={it.id} type="button" className={styles.pickRow} onClick={() => toggleAffected(it.id)} aria-pressed={on}>
+        <span className={styles.pickMark} data-on={on ? "true" : undefined} aria-hidden="true">{on ? "✓" : ""}</span>
+        <span className={styles.pickText}><span className={styles.pickLabel}>{it.label}</span><span className={styles.pickMeta}>{it.meta}</span></span>
+      </button>
+    );
+  };
+  const pager = (key: string, page: number, pages: number) => pages > 1 && (
+    <div className={styles.pickPager}>
+      <button type="button" className={styles.pickPage} onClick={() => turnPage(key, page - 1)} disabled={page === 0} aria-label="Previous page">‹</button>
+      <span className={styles.pickPageN}>{page + 1} / {pages}</span>
+      <button type="button" className={styles.pickPage} onClick={() => turnPage(key, page + 1)} disabled={page >= pages - 1} aria-label="Next page">›</button>
+    </div>
+  );
 
   const chips: { key: string; label: string; thumb?: string; remove: () => void }[] = [
     ...affected.map((n) => ({ key: "a:" + n, label: n, remove: () => toggleAffected(n) })),
@@ -182,23 +210,43 @@ export function RaiseView() {
                   {pickOpen && (
                     <div className={styles.picker} role="dialog" aria-label="Who else is affected">
                       <div className={styles.pickSearch}>
-                        <input value={pickQuery} onChange={(e) => setPickQuery(e.target.value)} placeholder="Search people, departments" aria-label="Search people and departments" autoFocus />
+                        <input value={pickQuery} onChange={(e) => { setPickQuery(e.target.value); setPickPages({}); }} placeholder="Search people, departments" aria-label="Search people and departments" autoFocus />
                       </div>
                       <div className={styles.pickList}>
-                        {groups.map((g) => (
-                          <div key={g.label}>
-                            <span className={styles.pickGroup}>{g.label}</span>
-                            {g.items.map((it) => {
-                              const on = affected.includes(it.id);
-                              return (
-                                <button key={it.id} type="button" className={styles.pickRow} onClick={() => toggleAffected(it.id)} aria-pressed={on}>
-                                  <span className={styles.pickMark} data-on={on ? "true" : undefined} aria-hidden="true">{on ? "✓" : ""}</span>
-                                  <span className={styles.pickText}><span className={styles.pickLabel}>{it.label}</span><span className={styles.pickMeta}>{it.meta}</span></span>
-                                </button>
-                              );
-                            })}
-                          </div>
-                        ))}
+                        {groups.map((g) => {
+                          const { page, pages, rows } = pageOf(g.label, g.items);
+                          return (
+                            <div key={g.label}>
+                              <span className={styles.pickGroup}>{g.label}</span>
+                              {rows.map((it) => {
+                                if (!it.dept) return pickRow(it);
+                                // A department row: the checkbox picks the whole department, the small button opens its people.
+                                const open = openDept === it.dept, members = inDept(it.dept), picked = members.filter((m) => affected.includes(m.id)).length;
+                                const sub = pageOf("dept:" + it.dept, members);
+                                return (
+                                  <div key={it.id} className={styles.pickDept} data-open={open ? "true" : undefined}>
+                                    <div className={styles.pickDeptRow}>
+                                      {pickRow(it)}
+                                      {members.length > 0 && (
+                                        <button type="button" className={styles.pickSub} onClick={() => setOpenDept(open ? null : it.dept ?? null)} aria-expanded={open} aria-label={(open ? "Hide" : "Pick") + " people in " + it.label} title={open ? "Hide people" : "Pick people in " + it.label}>
+                                          <span className={styles.pickSubN}>{(picked ? picked + "/" : "") + members.length}</span>
+                                          <span className={styles.pickSubChev} aria-hidden="true">›</span>
+                                        </button>
+                                      )}
+                                    </div>
+                                    {open && (
+                                      <div className={styles.pickNest}>
+                                        {sub.rows.map(pickRow)}
+                                        {pager("dept:" + it.dept, sub.page, sub.pages)}
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                              {pager(g.label, page, pages)}
+                            </div>
+                          );
+                        })}
                         {groups.length === 0 && <div className={styles.pickEmpty}>No matches</div>}
                       </div>
                       <div className={styles.pickFoot}>
