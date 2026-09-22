@@ -16,6 +16,7 @@
 //     next step. This guard is the cheap 90% until then.
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@prisma/client";
+import { hasDatabase, markDatabaseUnreachable } from "./mode";
 import { scopeViolation } from "./scope";
 
 function createClient() {
@@ -53,9 +54,51 @@ export function getDb(): Db {
   return globalForDb.__nextupDb;
 }
 
-/** Is a database configured at all? Lets callers fall back to the built-in demo tenant. */
-export function hasDatabase(): boolean {
-  return Boolean(process.env.DATABASE_URL);
+/**
+ * Ask Postgres once whether it is there. Called from src/instrumentation.ts before the first
+ * request. When nothing answers, the process runs on the built-in demo instead of throwing
+ * "Can't reach database server" into every page - that is what lets a colleague without Docker
+ * open the landing page and the dashboard after copying .env.example.
+ */
+export async function probeDatabase(): Promise<void> {
+  if (!hasDatabase()) return;
+  const timeout = new Promise<never>((_, reject) =>
+    setTimeout(() => reject(new Error("no answer within 3 s")), 3000).unref(),
+  );
+  try {
+    await Promise.race([getDb().$queryRaw`SELECT 1`, timeout]);
+  } catch (err) {
+    const where = describe(process.env.DATABASE_URL);
+    const why = reason(err);
+    markDatabaseUnreachable(`nothing answers at ${where} (${why})`);
+    // Drop the half-made client so nothing later reuses a broken pool.
+    void globalForDb.__nextupDb?.$disconnect().catch(() => {});
+    globalForDb.__nextupDb = undefined;
+    console.warn(
+      `[nextup] DATABASE_URL is set but nothing answers at ${where} (${why}).\n` +
+        "[nextup] Running on the built-in acme demo instead: /acme works, /admin and login are off.\n" +
+        "[nextup] Start Postgres (docker start nextup-dev-db) and restart the dev server, or remove DATABASE_URL.",
+    );
+  }
 }
+
+/** The line that says what went wrong - Prisma puts "Invalid invocation:" above it. */
+function reason(err: unknown): string {
+  if (!(err instanceof Error)) return String(err);
+  const lines = err.message.split("\n").map((l) => l.trim()).filter(Boolean);
+  return lines.find((l) => !l.includes("invocation")) ?? lines[0] ?? err.name;
+}
+
+/** host:port of a connection string, never the password. */
+function describe(url: string | undefined): string {
+  try {
+    const u = new URL(url ?? "");
+    return `${u.hostname}:${u.port || "5432"}`;
+  } catch {
+    return "the configured address";
+  }
+}
+
+export { hasDatabase, databaseOutage } from "./mode";
 
 export { TenantScopeError } from "./scope";

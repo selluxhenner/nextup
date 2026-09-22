@@ -9,7 +9,9 @@ and `docs/DATA_MODEL.md` are the map. Process rules: `CONTRIBUTING.md`. AI sessi
 
 ## Run
 
-No database needed - it falls back to the built-in `acme` demo:
+No database and no Docker needed - it falls back to the built-in `acme` demo. That also holds when
+`DATABASE_URL` is set but nothing answers there (a copied `.env` on a laptop without Postgres):
+the server says so once at startup and runs the demo; only `/admin` and login need the database.
 
 ```bash
 npm install
