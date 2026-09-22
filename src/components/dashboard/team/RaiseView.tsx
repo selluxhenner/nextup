@@ -26,6 +26,7 @@ const MIN_CHARS = 8;
 const PICK_PAGE = 5; // rows per page in the affected picker; longer lists page instead of scrolling
 const PROMPTS = ["Impact", "Who's blocked", "Already tried", "Deadline"];
 const INK = "#141414"; // = --nh-ink in tokens.css; the orb tints from a prop, not CSS
+const ORB_PX = 96; // the 64 preset is the largest tuned one; it is drawn at 64 and shown at this size
 const HOW: { id: "raise" | "context" | "score" | "track"; title: string; text: string }[] = [
   { id: "raise", title: "Raise it", text: "Anyone, from any team, submits an idea or a problem in one line." },
   { id: "context", title: "It reads the context", text: SITE.name + " maps it against your org structure, business model, and goals." },
@@ -327,7 +328,7 @@ export function RaiseView() {
                   const thinking = at >= 0, now = thinking ? ev.steps[at] : null;
                   return (
                     <div className={styles.evalCenter}>
-                      <span className={styles.orb} aria-hidden="true"><ThinkingOrb state="solving" size={64} theme="light" color={INK} paused={!thinking || reduced} /></span>
+                      <span className={styles.orb} aria-hidden="true"><ThinkingOrb state="connecting" size={64} style={{ width: ORB_PX, height: ORB_PX }} opts={{ spread: 1.15 }} theme="light" color={INK} paused={!thinking || reduced} /></span>
                       <h2 className={styles.evalHead}>{thinking ? "Evaluating" : "Evaluated"}</h2>
                       <p className={styles.evalNow} aria-live="polite">
                         {now ? <>{now.title}<span className={styles.evalN}>{at + 1} / {ev.steps.length}</span></> : <>Score {ev.score.value}<span className={styles.evalN}>{ev.steps.length} checks</span></>}
