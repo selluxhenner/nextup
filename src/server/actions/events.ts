@@ -14,7 +14,7 @@ import { getDb, hasDatabase } from "@/lib/db/client";
 import { issueSession } from "@/server/issue-session";
 import { parseSeed } from "@/features/demo/parse";
 import { policyFor } from "@/features/admin/stages";
-import { buildRaisedNotice, companyBaseUrl, notifyCaseRaised } from "@/server/notify-n8n";
+import { apiBaseForN8n, buildRaisedNotice, companyBaseUrl, notifyCaseRaised } from "@/server/notify-n8n";
 
 // Same ceiling as the integration endpoint (features/integrations MAX_PAYLOAD_BYTES): one event
 // is a title, a body and a few ids, never a file.
@@ -111,6 +111,7 @@ async function notifyRaised(
         people: company.users,
         day: company.demoDay,
         baseUrl: companyBaseUrl(slug),
+        apiBase: apiBaseForN8n(),
       }),
     );
   } catch {

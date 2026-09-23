@@ -14,7 +14,8 @@ app: case.raised commits
      -> is it a raise, and does the route have an owner?
         -> compose the message from the facts the app sent
         -> email the owner            (SMTP credential <slug>-smtp -> mailpit in the demo stack)
-        -> POST back case.commented   (bearer <slug>-nextup, Idempotency-Key: the event id)
+        -> POST back case.commented   (to the payload's apiBase, bearer <slug>-nextup,
+                                        Idempotency-Key: the event id)
 ```
 
 **The app resolves the route owner, not n8n.** The webhook body already carries the case, the
@@ -116,9 +117,21 @@ successful run answers `200 {"duplicate": true}` and writes no second comment.
 
 ## Things that will bite you
 
-**`access to env vars denied`** — the write-back URL is `{{ $env.NEXTUP_BASE }}/...`, and n8n
-blocks `$env` in expressions unless `N8N_BLOCK_ENV_ACCESS_IN_NODE=false`. It is set on the n8n
-service in `compose.yml`; if you run n8n some other way, set it there too.
+**The write-back goes to the wrong app** — it should not any more, but this is worth knowing.
+The notice carries `apiBase`, and the workflow writes back to *that*, so the same n8n can answer
+the compose stack one day and a server on your machine the next. Each app says where it can be
+reached via `N8N_CALLBACK_BASE`.
+
+The **address** travels with the notice; the **bearer token does not**. `<slug>-nextup` holds one
+token, and a token minted in one database is not valid in another — point the workflow at a
+different environment without swapping that credential and the write-back answers `401`, the
+email having already gone out. One environment at a time, unless you duplicate the workflow with
+a second credential. If a raise is emailed but the case never hears about it, check
+that value first: inside the container network `localhost` is n8n itself, and a server on your own
+machine is `host.docker.internal:<port>`, which `compose.yml` maps for n8n.
+
+Earlier versions read this from n8n's own `$env.NEXTUP_BASE`, which tied the instance to exactly
+one app and needed `N8N_BLOCK_ENV_ACCESS_IN_NODE=false` to work at all. Both are gone.
 
 **`/api//events` with an empty slug** — `$json` in the write-back node is the *email* node's
 output (`accepted`, `messageId`), not the composed fields. Every reference to the composed values

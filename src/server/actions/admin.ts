@@ -35,7 +35,7 @@ import {
   type InstanceFacts,
 } from "@/features/integrations/automation";
 import { classify, type AutomationTaskView } from "@/features/integrations/tasks";
-import { buildRaisedNotice, companyBaseUrl, deliverRaisedNotice } from "@/server/notify-n8n";
+import { apiBaseForN8n, buildRaisedNotice, companyBaseUrl, deliverRaisedNotice } from "@/server/notify-n8n";
 import { parseSeed } from "@/features/demo/parse";
 import type { EventPayload } from "@/features/cases/events";
 import { companyUrl, dashboardUrl, landingUrl } from "@/features/tenant/urls";
@@ -534,6 +534,7 @@ export async function automationTasks(limit = 25): Promise<AutomationTaskView[]>
           people: company.users,
           day: company.demoDay,
           baseUrl: companyBaseUrl(company.slug),
+          apiBase: apiBaseForN8n(),
         })
       : null;
 
@@ -594,6 +595,7 @@ export async function retryNoticeAction(_prev: RetryState, form: FormData): Prom
       people: company.users,
       day: company.demoDay,
       baseUrl: companyBaseUrl(slug),
+      apiBase: apiBaseForN8n(),
     }),
     8000, // A person is watching this one, so give n8n longer than the raise path does.
   );

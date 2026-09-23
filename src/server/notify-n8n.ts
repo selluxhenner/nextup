@@ -36,6 +36,14 @@ export type RaisedNotice = {
     deputyName: string | null;
   };
   links: { inbox: string; case: string };
+  /**
+   * Where to POST the write-back. The APP says where it can be reached, because only the app
+   * knows: one n8n serves the compose stack, a developer's `next start` on the host, and the VPS,
+   * and each of those is a different address. n8n used to read this from its own $env, which made
+   * the instance able to answer exactly one app - and answer it even when the notice had come
+   * from somewhere else, so the comment landed in the wrong database.
+   */
+  apiBase: string;
 };
 
 type People = { name: string; email: string }[];
@@ -50,6 +58,8 @@ export function buildRaisedNotice(args: {
   people: People;
   day: number;
   baseUrl: string;
+  /** Reachable from n8n, which is not the same as reachable from a browser. */
+  apiBase: string;
 }): RaisedNotice {
   const { slug, eventId, caseId, payload, seed, people, day, baseUrl } = args;
   const route = seed.routes.find((r) => r.id === payload.routeId) ?? null;
@@ -77,6 +87,7 @@ export function buildRaisedNotice(args: {
       deputyName: route?.deputy ?? null,
     },
     links: { inbox: `${baseUrl}/leader`, case: `${baseUrl}/cases/${caseId}` },
+    apiBase: args.apiBase,
   };
 }
 
@@ -130,6 +141,16 @@ export function notifyCaseRaised(notice: RaisedNotice): void {
     // the optional half. /admin lists what never came back, and can re-send it.
     console.warn("[n8n] could not deliver case.raised notice for", notice.slug, "-", result.error);
   });
+}
+
+/**
+ * The address n8n should call back on. Not companyBaseUrl(): that is built for a human clicking a
+ * link in an email, and inside the Docker network "localhost" is n8n itself. The default is the
+ * compose service name, which is right whenever the app runs in that stack; a server started on a
+ * developer's machine sets N8N_CALLBACK_BASE to something n8n can actually resolve.
+ */
+export function apiBaseForN8n(): string {
+  return process.env.N8N_CALLBACK_BASE ?? "http://app:3000";
 }
 
 /** Where this company lives, for the deep links in the message. */
