@@ -7,8 +7,8 @@ how it does that and the rules that keep it that way. Two checks enforce them: `
 ## How it works
 
 - **One page scale.** The design is drawn for a ~1920×950 canvas. On a mouse-driven screen,
-  `zoom` on `<html>` scales the whole page to fit: a laptop lands around 0.8 (what 80% browser
-  zoom used to give), a 1920px monitor at 1, a very large monitor a little above. Width and height
+  `zoom` on `<html>` scales the whole page to fit: a laptop lands at 0.9 (the floor - 0.8 made text
+  too small to read), a 1920px monitor at 1, a very large monitor a little above. Width and height
   both count - the smaller factor wins. The steps live in `src/styles/tokens.css` (`--nh-zoom`).
 - **Phones and tablets are never scaled.** Touch screens keep scale 1; their layouts are tuned
   per breakpoint in each `*.module.css` (`760px` = phone, `900px` = narrow tablet, `480px` = small phone).
@@ -36,7 +36,8 @@ how it does that and the rules that keep it that way. Two checks enforce them: `
 6. **Phones: thumb and keyboard.** Keep inputs near the top - the on-screen keyboard covers the
    bottom half. Inputs use 16px text (smaller makes iOS zoom in on focus). Popovers open where
    there is room.
-7. **Text stays readable.** On a scaled laptop, 9px becomes ~7px. Nothing new below 11px.
+7. **Text stays readable.** Nothing below 11px (on a scaled laptop that is ~10px). The page scale never goes
+   below 0.9.
 
 ## Before you say a change is done
 
