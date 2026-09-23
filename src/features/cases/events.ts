@@ -2,7 +2,7 @@
 // Port of legacy/demo/js/store.js - types here, reducer in reducer.ts, selectors in selectors.ts.
 // Never store display text as state: store who / which day / which route; build sentences at render.
 export type CaseEventType =
-  | "case.raised" // { title, body, routeId, assignee, fromDept, kind?, reason?, upside?, affected?, attachments? }
+  | "case.raised" // { title, body, routeId, assignee, fromDept, kind?, reason?, upside?, affected?, attachments?, proposal? }
   | "case.read" // -
   | "case.decided" // { answer: 'yes'|'no', reason?, note? }
   | "case.handed" // { to, why? }
@@ -24,6 +24,15 @@ export type CaseEventType =
 // What an employee raises: something that hurts, or something that could be. Missing = problem.
 export type CaseKind = "problem" | "idea";
 
+// What the router proposed when the case was raised, kept so /admin/decisions can compare it with
+// what people then chose (docs/COMPANY_KNOWLEDGE.md). The reducer never reads it.
+export type RouteProposal = {
+  routeId: string | null;
+  confidence: number; // 0-100
+  source: "keywords" | "llm";
+  version: string; // which matcher or prompt - features/routing ROUTER_VERSION
+};
+
 // Every field an event may carry. Which ones apply is documented per type above.
 export type EventPayload = {
   title?: string; body?: string; routeId?: string | null; assignee?: string; fromDept?: string; kind?: CaseKind; reason?: string; upside?: string;
@@ -38,6 +47,7 @@ export type EventPayload = {
   attachments?: number; // screenshots attached when raised (the files stay in the browser; only the count is a fact)
   rescore?: boolean; // on case.commented: the comment is new information, the score is re-evaluated with it
   by?: number;
+  proposal?: RouteProposal; // on case.raised
 };
 
 export type CaseEvent = {

@@ -5,9 +5,9 @@
 //
 // Demo honesty: this is arithmetic over the seed, not a model. Every step names the fact it
 // used, so a manager can ask "where did that come from?" and get an answer.
-import type { CaseKind } from "@/features/cases/events";
+import type { CaseKind, RouteProposal } from "@/features/cases/events";
 import type { OrgPerson, Problem, RolePersona, Route } from "@/features/demo/types";
-import { propose } from "@/features/routing";
+import { propose, ROUTER_VERSION } from "@/features/routing";
 import { scoreCase, type Score } from "@/features/scoring";
 
 export type EvalInput = { kind: CaseKind; text: string; context?: string; affected: string[]; attachments: number; who: { name: string; line: string; handle: string | null } };
@@ -22,7 +22,7 @@ export type Evaluation = {
   similar: Problem | null; // a known problem it looks like
   sameAs: KnownCase | null; // a case someone already raised that reads like this one
   score: Score;
-  payload: { kind: CaseKind; title: string; body: string; upside: string; routeId: string | null; assignee: string; fromDept: string; reason: string; affected: string[]; attachments: number };
+  payload: { kind: CaseKind; title: string; body: string; upside: string; routeId: string | null; assignee: string; fromDept: string; reason: string; affected: string[]; attachments: number; proposal: RouteProposal };
 };
 
 // The demo company's goals, as the board would state them. Matched by keyword so a step can say which goal a case serves.
@@ -82,6 +82,7 @@ export function evaluate(input: EvalInput, ctx: EvalContext): Evaluation {
 
   return {
     steps, route, confidence, lead, passesTo, similar, sameAs, score,
-    payload: { kind: input.kind, title: text, body: context, upside, routeId: route?.id ?? null, assignee: lead, fromDept: input.who.line, reason: route ? "triage" : "not responsible", affected: input.affected, attachments: input.attachments },
+    payload: { kind: input.kind, title: text, body: context, upside, routeId: route?.id ?? null, assignee: lead, fromDept: input.who.line, reason: route ? "triage" : "not responsible", affected: input.affected, attachments: input.attachments,
+      proposal: { routeId: route?.id ?? null, confidence, source: "keywords", version: ROUTER_VERSION } },
   };
 }

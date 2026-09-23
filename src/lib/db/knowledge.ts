@@ -1,6 +1,6 @@
 // Company knowledge tables <-> the plain rows in src/features/knowledge. Every query names the
 // company at the top level, so the tenant guard sees all of them (no nested includes from Company).
-import type { Knowledge } from "@/features/knowledge";
+import type { Knowledge, Profile } from "@/features/knowledge";
 import { getDb } from "./client";
 
 const unit = { id: true, key: true, name: true, kind: true, headcount: true, parentId: true, sort: true } as const;
@@ -44,4 +44,11 @@ export async function replaceKnowledge(companyId: string, k: Knowledge, by: stri
     db.routingRule.createMany({ data: stamp(k.rules) }),
     db.goal.createMany({ data: stamp(k.goals) }),
   ]);
+}
+
+export async function loadProfile(companyId: string): Promise<Profile | null> {
+  return getDb().companyProfile.findUnique({
+    where: { companyId },
+    select: { vision: true, mission: true, principles: true, businessModel: true },
+  });
 }

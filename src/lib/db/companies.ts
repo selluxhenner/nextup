@@ -79,7 +79,13 @@ export async function findCompanyByEmailDomain(email: string): Promise<CompanyRe
  */
 export async function loadSeed(slug: string): Promise<Seed | null> {
   const row = await getDb().company.findUnique({ where: { slug }, select: { id: true, seedJson: true } });
-  return row ? overlayKnowledge(parseSeed(row.seedJson), await loadKnowledge(row.id)) : null;
+  return row ? companySeed(row) : null;
+}
+
+/** The same, for a company row already in hand. Use this, not parseSeed(seedJson), anywhere a
+ *  route owner or the org chart matters - the blob alone is stale once the tables exist. */
+export async function companySeed(row: { id: string; seedJson: unknown }): Promise<Seed> {
+  return overlayKnowledge(parseSeed(row.seedJson), await loadKnowledge(row.id));
 }
 
 /** Slugs that exist, for the Caddy on-demand TLS check and the admin list. */
