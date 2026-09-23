@@ -10,6 +10,23 @@ export type CompanyRow = {
   events: number;
   url: string;
   createdAt: string;
+  /** Null = "Continue with Microsoft" is off for this company. */
+  entraTenantId: string | null;
+  /** The redirect URI to add to the Entra app registration for this company. */
+  microsoftCallback: string;
+  persons: PersonRow[];
+};
+
+/** One person as /admin lists them: whether they have a way in, never the code itself. */
+export type PersonRow = {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  /** When their current login code was issued; null = none yet. */
+  codeIssuedAt: string | null;
+  /** Has signed in with Microsoft at least once (their account is bound). */
+  microsoft: boolean;
 };
 
 export type PilotRequestRow = {

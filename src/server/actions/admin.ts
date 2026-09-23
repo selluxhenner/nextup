@@ -1,5 +1,5 @@
 "use server";
-// The admin surface: create a company, rotate its code, delete it.
+// The admin surface: create a company, hand out its people's login codes, delete it.
 //
 // Deliberately OUTSIDE the [company] segment and outside the role system. src/config/roles.ts has
 // three roles and they are all per-company; a fourth "superadmin" role would change the meaning of
@@ -8,7 +8,8 @@ import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createHash, timingSafeEqual } from "node:crypto";
-import { generateAccessCode, hashAccessCode } from "@/features/auth/access-code";
+import { isTenantId } from "@/features/auth/entra";
+import { generateLoginCode, hashLoginCode } from "@/features/auth/login-code";
 import { ADMIN_COOKIE, signAdmin, verifyAdmin } from "@/features/auth/cookie";
 import type { CompanyRow, PilotRequestRow } from "@/features/admin/rows";
 import { seedTemplate } from "@/features/demo";
@@ -134,7 +135,11 @@ export async function listCompanies(): Promise<CompanyRow[]> {
   const rows = await getDb().company.findMany({
     orderBy: { createdAt: "desc" },
     select: {
-      id: true, slug: true, name: true, stage: true, createdAt: true,
+      id: true, slug: true, name: true, stage: true, createdAt: true, entraTenantId: true,
+      users: {
+        orderBy: { name: "asc" },
+        select: { id: true, name: true, email: true, role: true, loginCodeAt: true, entraOid: true },
+      },
       _count: { select: { users: true, events: true } },
     },
   });
@@ -147,14 +152,27 @@ export async function listCompanies(): Promise<CompanyRow[]> {
     events: r._count.events,
     url: companyUrl(r.slug),
     createdAt: r.createdAt.toISOString(),
+    entraTenantId: r.entraTenantId,
+    // Same as microsoftCallbackUrl() builds from the request, spelled from the public address.
+    microsoftCallback: `${companyUrl(r.slug)}/login/microsoft/callback`,
+    persons: r.users.map((u) => ({
+      id: u.id,
+      name: u.name,
+      email: u.email,
+      role: u.role,
+      codeIssuedAt: u.loginCodeAt?.toISOString() ?? null,
+      microsoft: Boolean(u.entraOid),
+    })),
   }));
 }
 
 export type CreateState =
   | { status: "idle" }
   | { status: "error"; problems: string[] }
-  /** The access code is shown once, here, and never again - only its hash is stored. */
-  | { status: "created"; slug: string; url: string; accessCode: string; warnings: string[] };
+  /** Every person's login code, shown once, here, and never again - only hashes are stored. */
+  | { status: "created"; slug: string; url: string; codes: IssuedCode[]; warnings: string[] };
+
+export type IssuedCode = { name: string; email: string; code: string };
 
 export async function createCompanyAction(_prev: CreateState, form: FormData): Promise<CreateState> {
   if (!(await isAdmin())) return { status: "error", problems: ["Not signed in to the admin area."] };
@@ -180,7 +198,8 @@ export async function createCompanyAction(_prev: CreateState, form: FormData): P
   }
 
   const seed = seedTemplate(input.template);
-  const accessCode = generateAccessCode(input.slug);
+  const now = new Date();
+  const codes = input.people.map((p) => ({ name: p.name.trim(), email: p.email.trim().toLowerCase(), code: generateLoginCode(input.slug) }));
 
   await db.company.create({
     data: {
@@ -188,17 +207,18 @@ export async function createCompanyAction(_prev: CreateState, form: FormData): P
       name: input.name,
       mark: markFor(input),
       stage,
-      accessCodeHash: hashAccessCode(accessCode),
       seedJson: toSeedJson(seed) as object,
       config: { create: {} },
       users: {
-        create: input.people.map((p) => ({
+        create: input.people.map((p, i) => ({
           name: p.name.trim(),
           email: p.email.trim().toLowerCase(),
           role: p.role,
           dept: p.dept ?? "",
           ini: initialsOf(p.name),
           handle: p.handle ?? null,
+          loginCodeHash: hashLoginCode(codes[i].code),
+          loginCodeAt: now,
         })),
       },
     },
@@ -208,27 +228,56 @@ export async function createCompanyAction(_prev: CreateState, form: FormData): P
     status: "created",
     slug: input.slug,
     url: companyUrl(input.slug),
-    accessCode,
+    codes,
     warnings: seedNameWarnings(seed, input.people),
   };
 }
 
-export type RotateState = { slug?: string; accessCode?: string; error?: string };
+export type RotateState = { slug?: string; error?: string };
 
-export async function rotateAccessCodeAction(_prev: RotateState, form: FormData): Promise<RotateState> {
+export type LoginCodeState = { slug?: string; name?: string; code?: string; error?: string };
+
+/**
+ * A new personal login code for one person. The previous one stops working at once - this is
+ * also how a lost or leaked code is revoked. Shown once; only its hash is stored.
+ */
+export async function issueLoginCodeAction(_prev: LoginCodeState, form: FormData): Promise<LoginCodeState> {
   if (!(await isAdmin())) return { error: "Not signed in to the admin area." };
   if (!hasDatabase()) return { error: "No database is configured." };
 
   const slug = String(form.get("slug") ?? "");
+  const userId = String(form.get("userId") ?? "");
   const company = await getDb().company.findUnique({ where: { slug }, select: { id: true } });
-  if (!company) return { error: "No such company." };
+  const user = company
+    ? await getDb().user.findFirst({ where: { id: userId, companyId: company.id }, select: { id: true, name: true } })
+    : null;
+  if (!company || !user) return { error: "No such person in this company." };
 
-  const accessCode = generateAccessCode(slug);
-  await getDb().company.update({
-    where: { id: company.id },
-    data: { accessCodeHash: hashAccessCode(accessCode) },
+  const code = generateLoginCode(slug);
+  await getDb().user.update({
+    where: { id: user.id, companyId: company.id },
+    data: { loginCodeHash: hashLoginCode(code), loginCodeAt: new Date() },
   });
-  return { slug, accessCode };
+  revalidatePath("/admin", "layout");
+  return { slug, name: user.name, code };
+}
+
+export type TenantState = { slug?: string; saved?: boolean; error?: string };
+
+/** Turns "Continue with Microsoft" on for a company (its Entra tenant ID), or off (empty). */
+export async function setEntraTenantAction(_prev: TenantState, form: FormData): Promise<TenantState> {
+  if (!(await isAdmin())) return { error: "Not signed in to the admin area." };
+  if (!hasDatabase()) return { error: "No database is configured." };
+
+  const slug = String(form.get("slug") ?? "");
+  const raw = String(form.get("tenantId") ?? "").trim().toLowerCase();
+  if (raw && !isTenantId(raw)) {
+    return { slug, error: "That isn't an Entra tenant ID. It looks like 72f988bf-86f1-41af-91ab-2d7cd011db47 (Entra admin center → Overview)." };
+  }
+  const { count } = await getDb().company.updateMany({ where: { slug }, data: { entraTenantId: raw || null } });
+  if (count === 0) return { slug, error: "No such company." };
+  revalidatePath("/admin", "layout");
+  return { slug, saved: true };
 }
 
 /** Destructive and irreversible: the cascade takes the people and the whole event log with it. */

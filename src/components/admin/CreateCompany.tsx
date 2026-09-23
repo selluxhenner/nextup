@@ -29,10 +29,16 @@ export function CreateCompany({ initial }: { initial?: CreateInitial }) {
       <div className={styles.ok}>
         <strong>{state.slug} is live.</strong>
         <p className="nh-hint">
-          Open it at <a href={state.url}>{state.url}</a>. Share this access code with the team -
-          it is shown once and only its hash is stored.
+          Open it at <a href={state.url}>{state.url}</a>. Each person gets their own login code -
+          give each one only to that person. Shown once; only hashes are stored. A lost code is
+          replaced under the company&apos;s &ldquo;People &amp; sign-in&rdquo;.
         </p>
-        <div className={styles.code}>{state.accessCode}</div>
+        {state.codes.map((c) => (
+          <div key={c.email}>
+            <strong>{c.name}</strong> <span className="nh-hint">· {c.email}</span>
+            <div className={styles.code}>{c.code}</div>
+          </div>
+        ))}
         {state.warnings.map((w) => (
           <p key={w} className={styles.warn}>{w}</p>
         ))}

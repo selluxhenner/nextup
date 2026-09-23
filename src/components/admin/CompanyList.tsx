@@ -1,23 +1,23 @@
 "use client";
-// Existing companies: where each one lives, how much is in it, and the two destructive actions.
+// Existing companies: where each one lives, how much is in it, who can get in, and the
+// destructive actions.
 import { useActionState } from "react";
 import {
   createApiTokenAction,
   deleteCompanyAction,
-  rotateAccessCodeAction,
   setCompanyStageAction,
   type CompanyRow,
   type RotateState,
   type StageState,
   type TokenState,
 } from "@/server/actions/admin";
+import { CompanyAccess } from "./CompanyAccess";
 import { nextStage, STAGE_MEANING, type Stage } from "@/features/admin/stages";
 import styles from "@/app/admin/admin.module.css";
 
 // readOnly: no database, so the three write actions would only answer with an error. The rows
 // still show - see features/admin/demo.ts.
 export function CompanyList({ companies, readOnly = false }: { companies: CompanyRow[]; readOnly?: boolean }) {
-  const [rotated, rotate] = useActionState<RotateState, FormData>(rotateAccessCodeAction, {});
   const [removed, remove] = useActionState<RotateState, FormData>(deleteCompanyAction, {});
   const [issued, issueToken] = useActionState<TokenState, FormData>(createApiTokenAction, {});
   const [staged, moveStage] = useActionState<StageState, FormData>(setCompanyStageAction, {});
@@ -26,13 +26,6 @@ export function CompanyList({ companies, readOnly = false }: { companies: Compan
 
   return (
     <div className={styles.rows}>
-      {rotated.accessCode ? (
-        <div className={styles.ok}>
-          <strong>New access code for {rotated.slug}</strong>
-          <div className={styles.code}>{rotated.accessCode}</div>
-          <p className="nh-hint">The previous code stopped working the moment this was made.</p>
-        </div>
-      ) : null}
       {issued.token ? (
         <div className={styles.ok}>
           <strong>API token for {issued.slug}</strong>
@@ -45,7 +38,6 @@ export function CompanyList({ companies, readOnly = false }: { companies: Compan
       ) : null}
       {issued.error ? <p className={styles.error} role="alert">{issued.error}</p> : null}
       {staged.error ? <p className={styles.error} role="alert">{staged.error}</p> : null}
-      {rotated.error ? <p className={styles.error} role="alert">{rotated.error}</p> : null}
       {removed.error ? <p className={styles.error} role="alert">{removed.error}</p> : null}
 
       {companies.map((c) => (
@@ -75,10 +67,6 @@ export function CompanyList({ companies, readOnly = false }: { companies: Compan
             )}
             {readOnly ? null : (
               <>
-              <form action={rotate}>
-                <input type="hidden" name="slug" value={c.slug} />
-                <button className="nh-btn nh-btn-ghost nh-btn-sm" type="submit">New code</button>
-              </form>
               <form action={issueToken}>
                 <input type="hidden" name="slug" value={c.slug} />
                 <button className="nh-btn nh-btn-ghost nh-btn-sm" type="submit">API token</button>
@@ -98,6 +86,7 @@ export function CompanyList({ companies, readOnly = false }: { companies: Compan
               </>
             )}
           </div>
+          {readOnly ? null : <CompanyAccess company={c} />}
         </div>
       ))}
     </div>

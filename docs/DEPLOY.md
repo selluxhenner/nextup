@@ -129,7 +129,7 @@ a container, the app on your machine.
 docker compose up -d db
 cp .env.example .env.local      # already points at 127.0.0.1:5432
 npm run db:migrate              # create the tables
-npm run db:seed                 # the acme demo company; prints its access code once
+npm run db:seed                 # the acme demo company; prints each person's login code once
 npm run dev                     # http://localhost:3000/acme
 ```
 

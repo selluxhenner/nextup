@@ -7,9 +7,9 @@
 // safe against a database people are already clicking around in.
 //
 // It ports src/features/demo/seed.ts (itself the port of legacy/demo/js/data.js) into acme's
-// seedJson, and creates that company's three people from the demo table.
-import { randomBytes } from "node:crypto";
-import { hashAccessCode } from "../src/features/auth/access-code";
+// seedJson, and creates that company's people from the demo table - each with a personal login
+// code (printed once). Set SEED_NEW_CODES=true to replace codes people already have.
+import { generateLoginCode, hashLoginCode } from "../src/features/auth/login-code";
 import { DEMO_COMPANIES } from "../src/features/tenant/demo-companies";
 import { seedTemplate } from "../src/features/demo";
 import { toSeedJson } from "../src/features/demo/parse";
@@ -22,14 +22,12 @@ try {
   /* no .env.local - DATABASE_URL is already in the environment (Docker, CI) */
 }
 
-const hashCode = hashAccessCode;
-
 const iniOf = (name: string) => name.split(" ").map((w) => w[0]).join("").slice(0, 2);
 
 async function main() {
   const db = getDb();
   const demo = DEMO_COMPANIES[0];
-  const accessCode = process.env.SEED_ACCESS_CODE ?? "demo-" + randomBytes(4).toString("hex");
+  const newCodes = process.env.SEED_NEW_CODES === "true";
 
   const company = await db.company.upsert({
     where: { slug: demo.slug },
@@ -38,9 +36,6 @@ async function main() {
       mark: demo.mark,
       anonymousHandles: demo.anonymousHandles,
       seedJson: toSeedJson(seedTemplate("demo")) as object,
-      // Only when asked explicitly. A re-run must not silently invalidate a code people are
-      // already using to get in.
-      ...(process.env.SEED_ACCESS_CODE ? { accessCodeHash: hashCode(accessCode) } : {}),
     },
     create: {
       slug: demo.slug,
@@ -48,14 +43,14 @@ async function main() {
       mark: demo.mark,
       anonymousHandles: demo.anonymousHandles,
       stage: "demo",
-      accessCodeHash: hashCode(accessCode),
       seedJson: toSeedJson(seedTemplate("demo")) as object,
       config: { create: {} },
     },
   });
 
+  const printed: string[] = [];
   for (const u of demo.users) {
-    await db.user.upsert({
+    const user = await db.user.upsert({
       where: { companyId_email: { companyId: company.id, email: u.email } },
       update: { name: u.name, role: u.role, dept: u.dept, handle: u.handle ?? null },
       create: {
@@ -68,14 +63,22 @@ async function main() {
         handle: u.handle ?? null,
       },
     });
+    // Only people without a code, unless asked: a re-run must not silently invalidate a code
+    // someone is already using to get in.
+    if (!user.loginCodeHash || newCodes) {
+      const code = generateLoginCode(company.slug);
+      await db.user.update({ where: { id: user.id, companyId: company.id }, data: { loginCodeHash: hashLoginCode(code), loginCodeAt: new Date() } });
+      printed.push(`  ${u.name.padEnd(14)} ${code}`);
+    }
   }
 
   const created = !(await db.caseEvent.count({ where: { companyId: company.id } }));
   console.log(`seeded ${company.slug} (${demo.users.length} people, event log ${created ? "empty" : "left as it was"})`);
-  if (process.env.SEED_ACCESS_CODE) {
-    console.log("access code: from SEED_ACCESS_CODE");
+  if (printed.length) {
+    console.log("login codes (shown once; only hashes are stored - new ones any time in /admin):");
+    for (const line of printed) console.log(line);
   } else {
-    console.log(`access code: ${accessCode}   <- shown once; re-run with SEED_ACCESS_CODE to set your own`);
+    console.log("login codes: everyone has one already (SEED_NEW_CODES=true replaces them)");
   }
   await db.$disconnect();
 }

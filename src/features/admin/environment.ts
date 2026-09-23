@@ -43,9 +43,15 @@ export function describeEnvironment(env: Env): EnvRow[] {
     },
     {
       label: "Login demo fill",
-      value: env.LOGIN_DEMO_FILL === "true" ? "on - demo-stage companies open with the demo code" : "off",
+      value: env.LOGIN_DEMO_FILL === "true" ? "on - demo-stage companies list their people at login" : "off",
       tone: env.LOGIN_DEMO_FILL === "true" ? "warn" : "ok",
-      hint: env.LOGIN_DEMO_FILL === "true" ? "Sandbox, pilot and live companies ignore it - they always need their real code." : undefined,
+      hint: env.LOGIN_DEMO_FILL === "true" ? "Sandbox, pilot and live companies ignore it - their people always need their own code." : undefined,
+    },
+    {
+      label: "Microsoft sign-in",
+      value: env.ENTRA_CLIENT_ID && env.ENTRA_CLIENT_SECRET ? "configured - on per company in Companies" : "off",
+      tone: Boolean(env.ENTRA_CLIENT_ID) !== Boolean(env.ENTRA_CLIENT_SECRET) ? "warn" : "ok",
+      hint: Boolean(env.ENTRA_CLIENT_ID) !== Boolean(env.ENTRA_CLIENT_SECRET) ? "Set both ENTRA_CLIENT_ID and ENTRA_CLIENT_SECRET." : undefined,
     },
   ];
 }

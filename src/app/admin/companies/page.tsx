@@ -1,4 +1,4 @@
-// Companies: every customer, its stage, its access code and API token - and the form that adds
+// Companies: every customer, its stage, its people's login codes and API token - and the form that adds
 // one. ?from=<pilot request id> pre-fills that form from the request.
 import { redirect } from "next/navigation";
 import { isAdmin } from "@/server/actions/admin";

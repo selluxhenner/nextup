@@ -35,7 +35,9 @@ docker compose up --build     # http://acme.localhost, http://admin.localhost
 | `ops/test-db.sh` | the database-backed suite, kept out of `npm test` |
 | `npm run demo` | the old static demo at http://localhost:8765 (`legacy/demo/`) |
 
-Demo company: `/acme`, log in at `/acme/login` with its access code. New companies are added in
+Demo company: `/acme`, log in at `/acme/login` with a personal login code (`npm run db:seed`
+prints one per person; `/admin` issues new ones), with Microsoft if the company is on Entra, or -
+on a box with `LOGIN_DEMO_FILL=true` - from the "View the demo as…" list. New companies are added in
 `/admin` and are live immediately - no deploy.
 
 ## Layout

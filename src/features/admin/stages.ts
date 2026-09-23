@@ -30,10 +30,8 @@ export const STAGE_MEANING: Record<Stage, string> = {
 export type StagePolicy = {
   /** The content is ours, not theirs: safe to show prospects, safe to wipe. */
   demoData: boolean;
-  /** The derived "Demo code" button and the pretend "Continue with Microsoft" (LOGIN_DEMO_FILL). */
+  /** The login page's one-click "View the demo as..." list (with LOGIN_DEMO_FILL on the server). */
   demoLogin: boolean;
-  /** After the code, pick anyone from a list. Real stages ask for your own work email instead. */
-  pickPersonAtLogin: boolean;
   /** Dev panel: become one of the company's other people without logging in again. */
   switchPerson: boolean;
   /** Dev panel: move the shared clock, delete added cases, reset the whole log. */
@@ -43,7 +41,6 @@ export type StagePolicy = {
 const DEMO_POLICY: StagePolicy = {
   demoData: true,
   demoLogin: true,
-  pickPersonAtLogin: true,
   switchPerson: true,
   rewriteHistory: true,
 };
@@ -51,7 +48,6 @@ const DEMO_POLICY: StagePolicy = {
 const REAL_POLICY: StagePolicy = {
   demoData: false,
   demoLogin: false,
-  pickPersonAtLogin: false,
   switchPerson: false,
   rewriteHistory: false,
 };

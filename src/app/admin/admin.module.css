@@ -146,12 +146,23 @@
   padding: 10px 12px;
 }
 
+/* Under each company row: its people's login codes and the Microsoft switch (CompanyAccess). */
+.access { grid-column: 1 / -1; display: grid; gap: 12px; border-top: 1px solid var(--nh-line); padding-top: 10px; }
+.access > summary { cursor: pointer; font-size: 0.9rem; }
+.access[open] > summary { margin-bottom: 4px; }
+.accessPeople { display: grid; gap: 6px; }
+.accessPerson { display: grid; grid-template-columns: 1fr auto auto; gap: 12px; align-items: center; }
+.accessTenant { display: grid; gap: 6px; }
+.accessTenantRow { display: flex; gap: 8px; align-items: center; }
+.accessTenantRow :global(.nh-input) { flex: 1; min-width: 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.accessTenant code { word-break: break-all; }
+
 .error { color: var(--nh-danger, #b3261e); font-size: 0.9rem; margin: 0; }
 
 .danger { color: var(--nh-danger, #b3261e); }
 
 @media (max-width: 760px) {
-  .two, .person { grid-template-columns: 1fr; }
+  .two, .person, .accessPerson { grid-template-columns: 1fr; }
   .main { padding: 20px 16px 56px; }
   .bar { flex-wrap: wrap; row-gap: 8px; padding: 14px 16px; }
   .barNav { gap: 14px; }

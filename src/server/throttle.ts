@@ -10,10 +10,10 @@ import { clear, clientAddress, hit, sweep, waitText, type Rule, type Window } fr
 
 /** Every limit in one table, so tuning them is one diff. */
 export const RULES = {
-  /** Company access code, per address and company: a person mistyping, not a script guessing. */
-  companyLogin: { limit: 10, windowMs: 10 * 60_000 },
-  /** Company access code, per company from everywhere: caps a distributed guess at one company. */
-  companyLoginAll: { limit: 200, windowMs: 10 * 60_000 },
+  /** Personal login code, per address and company: a person mistyping, not a script guessing. */
+  loginCode: { limit: 10, windowMs: 10 * 60_000 },
+  /** Personal login code, per company from everywhere: caps a distributed guess at one company. */
+  loginCodeAll: { limit: 200, windowMs: 10 * 60_000 },
   /** The /admin code opens everything - the tightest door. */
   adminLogin: { limit: 5, windowMs: 15 * 60_000 },
   /** The public /contact form: a real prospect sends one or two. */
