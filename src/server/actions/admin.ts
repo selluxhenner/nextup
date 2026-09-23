@@ -39,7 +39,7 @@ import {
 } from "@/features/integrations/automation";
 import { classify, type AutomationTaskView } from "@/features/integrations/tasks";
 import { apiBaseForN8n, buildRaisedNotice, companyBaseUrl, deliverRaisedNotice } from "@/server/notify-n8n";
-import { parseSeed } from "@/features/demo/parse";
+import { companySeed } from "@/lib/db/companies";
 import type { EventPayload } from "@/features/cases/events";
 import { companyUrl, dashboardUrl, landingUrl } from "@/features/tenant/urls";
 import { DEMO_COMPANIES } from "@/features/tenant/demo-companies";
@@ -530,6 +530,7 @@ export async function automationTasks(limit = 25): Promise<AutomationTaskView[]>
   if (companies.length === 0) return [];
 
   const byId = new Map(companies.map((c) => [c.id, c]));
+  const seeds = new Map(await Promise.all(companies.map(async (c) => [c.id, await companySeed(c)] as const)));
   const raises = await raisesFor(companies.map((c) => c.id), limit);
   const now = Date.now();
 
@@ -542,7 +543,7 @@ export async function automationTasks(limit = 25): Promise<AutomationTaskView[]>
           eventId: r.eventId,
           caseId: r.caseId ?? "",
           payload,
-          seed: parseSeed(company.seedJson),
+          seed: seeds.get(company.id)!,
           people: company.users,
           day: company.demoDay,
           baseUrl: companyBaseUrl(company.slug),
@@ -603,7 +604,7 @@ export async function retryNoticeAction(_prev: RetryState, form: FormData): Prom
       eventId: event.id,
       caseId: event.targetId ?? "",
       payload: (event.payload ?? {}) as EventPayload,
-      seed: parseSeed(company.seedJson),
+      seed: await companySeed(company),
       people: company.users,
       day: company.demoDay,
       baseUrl: companyBaseUrl(slug),

@@ -306,7 +306,9 @@
 }
 
 .side { position: sticky; top: 16px; }
-.content { display: grid; gap: 20px; min-width: 0; }
+/* minmax(0, 1fr): an implicit `auto` column grows to its widest child, so a wide table would
+   stretch the page instead of scrolling inside its .tableWrap. */
+.content { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; min-width: 0; }
 .content h1, .content h2, .content h3 { margin-top: 0; }
 .card[id] { scroll-margin-top: 16px; }
 
@@ -547,4 +549,67 @@ a.count[data-tone="bad"] { border-color: #f5c2bf; background: var(--nh-danger-ti
   .envList li { grid-template-columns: 9px 1fr; }
   .envList li > span:last-child { grid-column: 2; }
   .panel { padding: 16px; }
+}
+
+/* Knowledge and Decisions: read-only tables for the software team. Wide tables scroll inside
+   their own box, never the page. */
+.pick { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 0; }
+.pick a {
+  padding: 4px 12px;
+  border: 1px solid var(--nh-line);
+  border-radius: 999px;
+  color: var(--nh-ink-mute, #6b7280);
+  text-decoration: none;
+  font-size: 0.85rem;
+}
+.pick a:hover { border-color: var(--nh-brand, #2563eb); color: var(--nh-brand, #2563eb); }
+.pick a[aria-current="page"] { border-color: var(--nh-brand, #2563eb); color: var(--nh-brand, #2563eb); font-weight: 600; }
+
+.tableWrap { overflow-x: auto; margin-top: 12px; }
+.table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+.table th {
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--nh-ink-mute, #6b7280);
+  padding: 6px 10px 6px 0;
+  border-bottom: 1px solid var(--nh-line);
+  white-space: nowrap;
+}
+.table td { padding: 8px 10px 8px 0; border-bottom: 1px solid var(--nh-line); vertical-align: top; }
+.table tr:last-child td { border-bottom: 0; }
+.sub { display: block; font-size: 0.8rem; color: var(--nh-ink-mute, #6b7280); }
+.nowrap { white-space: nowrap; }
+.indent { padding-left: calc(var(--depth, 0) * 18px); }
+
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-top: 12px; }
+.tile { border: 1px solid var(--nh-line); border-radius: var(--nh-radius-sm, 10px); padding: 12px; }
+.tileValue { font-size: 1.4rem; font-weight: 600; }
+.tileLabel { font-size: 0.8rem; color: var(--nh-ink-mute, #6b7280); }
+
+.pill {
+  display: inline-block;
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--nh-line);
+  white-space: nowrap;
+}
+.pill[data-v="agreed"] { border-color: #86efac; background: #f0fdf4; color: #166534; }
+.pill[data-v="overridden"], .pill[data-v="handed elsewhere"] { border-color: #fca5a5; background: #fef2f2; color: #991b1b; }
+.pill[data-v="no route"] { border-color: #fde68a; background: #fffbeb; color: #92400e; }
+
+.brief {
+  margin: 12px 0 0;
+  padding: 12px 14px;
+  max-height: 480px;
+  overflow: auto;
+  white-space: pre-wrap;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  background: var(--nh-app-ground, #f6f7f9);
+  border-radius: 8px;
 }

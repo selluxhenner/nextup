@@ -12,7 +12,7 @@ import { APP_EVENT_TYPES } from "@/features/cases/persist";
 import { appendEventRow, deleteEventsForTargets, resetCompanyLog } from "@/lib/db/events";
 import { getDb, hasDatabase } from "@/lib/db/client";
 import { issueSession } from "@/server/issue-session";
-import { parseSeed } from "@/features/demo/parse";
+import { companySeed } from "@/lib/db/companies";
 import { policyFor } from "@/features/admin/stages";
 import { apiBaseForN8n, buildRaisedNotice, companyBaseUrl, notifyCaseRaised } from "@/server/notify-n8n";
 
@@ -98,7 +98,7 @@ async function notifyRaised(
   try {
     const company = await getDb().company.findUnique({
       where: { slug },
-      select: { demoDay: true, seedJson: true, users: { select: { name: true, email: true } } },
+      select: { id: true, demoDay: true, seedJson: true, users: { select: { name: true, email: true } } },
     });
     if (!company) return;
     notifyCaseRaised(
@@ -107,7 +107,7 @@ async function notifyRaised(
         eventId,
         caseId,
         payload,
-        seed: parseSeed(company.seedJson),
+        seed: await companySeed(company),
         people: company.users,
         day: company.demoDay,
         baseUrl: companyBaseUrl(slug),

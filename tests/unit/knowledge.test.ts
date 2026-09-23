@@ -6,7 +6,7 @@ import { SEED } from "@/features/demo/seed";
 import { GOALS } from "@/features/evaluate";
 import { emptyLog } from "@/features/cases/events";
 import { reduce } from "@/features/cases/reducer";
-import { NO_KNOWLEDGE, overlayKnowledge, rowsFromSeed, seedParts } from "@/features/knowledge";
+import { companyBrief, NO_KNOWLEDGE, overlayKnowledge, roleTree, rowsFromSeed, seedParts } from "@/features/knowledge";
 
 const counter = () => { let n = 0; return () => "id" + ++n; };
 const rows = () => rowsFromSeed(SEED, GOALS, counter());
@@ -47,6 +47,30 @@ describe("the structure is between roles, not people", () => {
 
   it("keeps the evaluate goals as goal rows", () => {
     expect(rows().goals.map((g) => g.title)).toEqual(GOALS.map((g) => g.goal));
+  });
+});
+
+describe("roleTree and companyBrief", () => {
+  it("lists every role once, each boss before the roles under it", () => {
+    const k = rows();
+    const tree = roleTree(k);
+    expect(tree).toHaveLength(k.roles.length);
+    const at = new Map(tree.map((n, i) => [n.role.id, i]));
+    for (const n of tree) if (n.role.reportsToId) expect(at.get(n.role.reportsToId)!).toBeLessThan(at.get(n.role.id)!);
+    expect(tree[0]).toMatchObject({ depth: 0, holders: ["E. Lindqvist"] });
+  });
+
+  it("gives the model roles, routes and goals - and not one name", () => {
+    const brief = companyBrief(rows(), { vision: "Machines that never wait", mission: "", principles: [], businessModel: "" });
+    expect(brief).toContain("Vision: Machines that never wait");
+    expect(brief).toContain("[r1] Spend under €5k");
+    expect(brief).toContain("Team lead, 4-series (Production)");
+    expect(brief).toContain(GOALS[0].goal);
+    for (const p of SEED.people) expect(brief).not.toContain(p.name);
+  });
+
+  it("is deterministic, so it can be cached and hashed", () => {
+    expect(companyBrief(rows(), null)).toBe(companyBrief(rows(), null));
   });
 });
 

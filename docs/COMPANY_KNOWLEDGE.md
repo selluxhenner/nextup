@@ -22,7 +22,7 @@ company. The first part (the tables) is built; the rest is the plan.
 |---|---|---|---|
 | 1. Structured facts | profile, org units, roles and holders, routing table, goals | `CompanyProfile`, `OrgUnit`, `OrgRole`, `OrgRoleHolder`, `RoutingRule`, `Goal` | **built** |
 | 2. Documents | public business papers, strategy PDFs, policies | `Document` plus `DocumentChunk` with a pgvector embedding | planned |
-| 3. AI access | a cached company brief plus server-side tools | `src/features/ai/` | planned |
+| 3. AI access | a cached company brief plus server-side tools | `companyBrief` in `src/features/knowledge` (built); `src/features/ai/` | brief built, tools planned |
 
 ### Layer 1: tables (built)
 
@@ -68,6 +68,36 @@ is demo content, not company structure.
 3. **Output.** The model's answer is `route.proposed` with `source: "llm"`, `confidence`,
    `promptVersion` and `citations[]`. There is a keyword fallback after 800 ms
    (`INTEGRATIONS.md`).
+
+## Where the team can look
+
+All of these views are read-only and sit behind the admin code.
+
+| Question | Where | What it shows |
+|---|---|---|
+| What does the app know about a company? | `/admin/knowledge?company=<slug>` | units, the role tree, the routing table, goals, and **the exact brief a model would be given** (`companyBrief`, no names) |
+| How good are the routing proposals? | `/admin/decisions` | one row per raise. Each row has the proposed route, confidence and router version, the route the case ended on, a verdict, the hand-offs, and whether n8n wrote back |
+| What does a new matcher or prompt score? | `/admin/decisions/export` | a JSON-lines file of settled cases: `{text, expected, proposed, confidence, version}`. This is the input for `tests/eval/routing/` |
+| Did n8n do its job? | `/admin/connections` → Automation tasks | every raise paired with n8n's write-back through its idempotency key (done, skipped, pending or failed), how long it took, and a retry button |
+| Why did an n8n run fail? | n8n itself → Executions (`:5678` locally) | node-by-node input and output. The app cannot see inside n8n and holds no n8n API key (`ops/n8n/README.md`) |
+| The raw facts | `CaseEvent` table | every event, including `source = 'n8n'` write-backs and `case.raised` payloads with their `proposal` |
+
+**How a proposal is recorded.**
+
+- Every `case.raised` payload carries `proposal: { routeId, confidence, source, version }`, where `version` is `ROUTER_VERSION` in `features/routing`.
+- **Bump the version whenever the matching or the prompt changes.** `/admin/decisions` splits its figures by version, so old and new can be compared on real cases.
+
+**The verdicts** (`features/admin/decisions.ts`) always come from what people did next, never from the model:
+
+| Verdict | Meaning |
+|---|---|
+| agreed | answered on the proposed route |
+| overridden | someone sent `case.override` |
+| handed elsewhere | handed to someone other than the first desk and the route's owner or deputy |
+| no route | the router found no row |
+| open | none of the above has happened yet |
+
+Nothing in the UI emits `case.override` yet. Until something does, "handed elsewhere" is how a wrong proposal shows up.
 
 ## Build order
 

@@ -146,3 +146,81 @@ export function seedParts(k: Knowledge): Pick<Seed, "depts" | "people" | "routes
 export function overlayKnowledge(seed: Seed, k: Knowledge): Seed {
   return hasKnowledge(k) ? { ...seed, ...seedParts(k) } : seed;
 }
+
+export type Profile = { vision: string; mission: string; principles: string[]; businessModel: string };
+
+export type RoleNode = { role: RoleRow; unit: string; holders: string[]; depth: number };
+
+/** Roles in org-chart order: each boss, then everyone under them. Roles in a loop come last. */
+export function roleTree(k: Knowledge): RoleNode[] {
+  const unitName = new Map(k.units.map((u) => [u.id, u.name]));
+  const byBoss = new Map<string | null, RoleRow[]>();
+  for (const r of [...k.roles].sort((a, b) => a.sort - b.sort)) byBoss.set(r.reportsToId, [...(byBoss.get(r.reportsToId) ?? []), r]);
+  const ids = new Set(k.roles.map((r) => r.id));
+  const out: RoleNode[] = [];
+  const seen = new Set<string>();
+  const walk = (r: RoleRow, depth: number) => {
+    if (seen.has(r.id)) return;
+    seen.add(r.id);
+    const holders = k.holders.filter((h) => h.roleId === r.id).sort((a, b) => a.sort - b.sort).map((h) => h.name);
+    out.push({ role: r, unit: unitName.get(r.orgUnitId) ?? "", holders, depth });
+    for (const c of byBoss.get(r.id) ?? []) walk(c, depth + 1);
+  };
+  // Tops: no boss, or a boss that is not in the table.
+  for (const r of k.roles.filter((x) => !x.reportsToId || !ids.has(x.reportsToId)).sort((a, b) => a.sort - b.sort)) walk(r, 0);
+  for (const r of k.roles) walk(r, 0);
+  return out;
+}
+
+/**
+ * What a model is given about the company: profile, units, the role tree, the routing table and
+ * the goals, as plain text. No names - roles only (docs/INTEGRATIONS.md). Deterministic, so the
+ * same knowledge gives the same text and the text can be cached and hashed.
+ */
+export function companyBrief(k: Knowledge, profile: Profile | null): string {
+  const unitName = new Map(k.units.map((u) => [u.id, u.name]));
+  const roleById = new Map(k.roles.map((r) => [r.id, r]));
+  const roleLabel = (id: string | null) => {
+    const r = id ? roleById.get(id) : undefined;
+    return r ? `${r.title || "unnamed role"} (${unitName.get(r.orgUnitId) ?? "?"})` : "none";
+  };
+  const lines: string[] = [];
+
+  if (profile && (profile.vision || profile.mission || profile.businessModel || profile.principles.length)) {
+    lines.push("## Profile");
+    if (profile.vision) lines.push("Vision: " + profile.vision);
+    if (profile.mission) lines.push("Mission: " + profile.mission);
+    if (profile.businessModel) lines.push("Business model: " + profile.businessModel);
+    for (const p of profile.principles) lines.push("Principle: " + p);
+    lines.push("");
+  }
+
+  lines.push("## Units");
+  for (const u of [...k.units].sort((a, b) => a.sort - b.sort)) lines.push(`- ${u.name} [${u.key}], ${u.headcount} people`);
+
+  lines.push("", "## Roles (indented under the role they report to)");
+  for (const n of roleTree(k)) {
+    if (!n.role.title) continue;
+    const extra = [
+      n.role.decides.length ? "decides: " + n.role.decides.join(", ") : "",
+      n.role.spendLimitEur !== null ? "spend limit €" + n.role.spendLimitEur : "",
+      n.role.skills.length ? "skills: " + n.role.skills.join(", ") : "",
+    ].filter(Boolean);
+    lines.push(`${"  ".repeat(n.depth)}- ${n.role.title} (${n.unit})${extra.length ? " - " + extra.join("; ") : ""}`);
+  }
+
+  lines.push("", "## Routing table (request type -> owner · deputy · buddy)");
+  for (const r of [...k.rules].sort((a, b) => a.sort - b.sort)) {
+    lines.push(`- [${r.key}] ${r.type} -> ${roleLabel(r.ownerRoleId)} · ${roleLabel(r.deputyRoleId)} · ${roleLabel(r.buddyRoleId)}; keywords: ${r.keywords.join(", ")}`);
+  }
+
+  if (k.goals.length) {
+    lines.push("", "## Goals");
+    for (const g of [...k.goals].sort((a, b) => a.sort - b.sort)) {
+      const extra = [g.kpi && "KPI " + g.kpi, g.target && "target " + g.target, g.period].filter(Boolean);
+      lines.push(`- ${g.title}${g.orgUnitId ? " (" + (unitName.get(g.orgUnitId) ?? "?") + ")" : ""}${extra.length ? " - " + extra.join(", ") : ""}`);
+    }
+  }
+
+  return lines.join("\n");
+}
