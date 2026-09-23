@@ -5,7 +5,9 @@ import type { Role } from "@/config/roles";
 import type { DemoCompany, DemoUser } from "@/features/tenant/demo-companies";
 import type { Seed } from "@/features/demo/types";
 import { parseSeed } from "@/features/demo/parse";
+import { overlayKnowledge } from "@/features/knowledge";
 import { getDb } from "./client";
+import { loadKnowledge } from "./knowledge";
 
 /** A company row plus its people, in the shape the app has always used. */
 export type CompanyRecord = DemoCompany & { id: string; stage: string; demoDay: number };
@@ -71,10 +73,13 @@ export async function findCompanyByEmailDomain(email: string): Promise<CompanyRe
   return row ? toRecord(row) : null;
 }
 
-/** The company's demo content. Throws SeedShapeError if the blob is not a Seed. */
+/**
+ * The company's content. Throws SeedShapeError if the blob is not a Seed. Once the company has
+ * knowledge rows (docs/COMPANY_KNOWLEDGE.md), depts, people and routes come from those instead.
+ */
 export async function loadSeed(slug: string): Promise<Seed | null> {
-  const row = await getDb().company.findUnique({ where: { slug }, select: { seedJson: true } });
-  return row ? parseSeed(row.seedJson) : null;
+  const row = await getDb().company.findUnique({ where: { slug }, select: { id: true, seedJson: true } });
+  return row ? overlayKnowledge(parseSeed(row.seedJson), await loadKnowledge(row.id)) : null;
 }
 
 /** Slugs that exist, for the Caddy on-demand TLS check and the admin list. */

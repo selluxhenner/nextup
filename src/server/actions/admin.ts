@@ -14,6 +14,8 @@ import { ADMIN_COOKIE, signAdmin, verifyAdmin } from "@/features/auth/cookie";
 import type { CompanyRow, PilotRequestRow } from "@/features/admin/rows";
 import { seedTemplate } from "@/features/demo";
 import { toSeedJson } from "@/features/demo/parse";
+import { GOALS } from "@/features/evaluate";
+import { hasKnowledge, rowsFromSeed } from "@/features/knowledge";
 import {
   initialsOf,
   markFor,
@@ -27,6 +29,7 @@ import { automationFor, raisesFor } from "@/lib/db/automation";
 import { databaseFacts, type DatabaseFacts } from "@/lib/db/health";
 import { describeDatabase, type DatabaseReport } from "@/features/admin/health";
 import { canMoveStage, isStage, STAGES } from "@/features/admin/stages";
+import { replaceKnowledge } from "@/lib/db/knowledge";
 import { createToken } from "@/lib/db/tokens";
 import {
   healthUrlFrom,
@@ -201,7 +204,7 @@ export async function createCompanyAction(_prev: CreateState, form: FormData): P
   const now = new Date();
   const codes = input.people.map((p) => ({ name: p.name.trim(), email: p.email.trim().toLowerCase(), code: generateLoginCode(input.slug) }));
 
-  await db.company.create({
+  const company = await db.company.create({
     data: {
       slug: input.slug,
       name: input.name,
@@ -223,6 +226,11 @@ export async function createCompanyAction(_prev: CreateState, form: FormData): P
       },
     },
   });
+
+  // The template's org units, roles, routing table and goals as rows (docs/COMPANY_KNOWLEDGE.md).
+  // The empty template has none, and a company without rows reads from seedJson as before.
+  const knowledge = rowsFromSeed(seed, input.template === "demo" ? GOALS : [], () => crypto.randomUUID());
+  if (hasKnowledge(knowledge)) await replaceKnowledge(company.id, knowledge, "admin");
 
   return {
     status: "created",
