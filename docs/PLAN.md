@@ -1,11 +1,11 @@
 # NextHub - build plan
 
-> **Decision 15 Sep 2026: Next.js.** The repo is the Next.js app; the old static demo is
-> frozen in `legacy/demo/`. Folder rules: `docs/ARCHITECTURE.md`.
+> **Decision 15 Sep 2026: Next.js.** The repo is the Next.js app; the old static demo
+> was removed on 23 Sep 2026. Folder rules: `docs/ARCHITECTURE.md`.
 
 The product: employees raise a case in one field, it lands in the right leader's inbox with a
 clock, the leader answers, the manager sees the wait ledger. Three roles, three home screens
-(the whiteboard concept, section 8). The demo in `legacy/demo/` proves the inbox loop for one
+(the whiteboard concept, section 8). The old static demo proved the inbox loop for one
 company; this app adds everything around it: landing, login, company, roles, real data.
 
 ## The user journey
@@ -48,7 +48,7 @@ Each phase ends with something a teammate can open in a browser. One branch per 
 > different way than planned, the line says so.
 
 ### Phase 0 - Repo + scaffold (done 15 Sep)
-- [x] Next.js 16 app at the repo root; static demo moved to `legacy/demo/` (still in CI)
+- [x] Next.js 16 app at the repo root; static demo moved to `legacy/demo/` (deleted 23 Sep)
 - [x] Every route exists (`docs/ROUTES.md`); `src/config/roles.ts`: ROLE_HOME, ROLE_ACCESS, NAV
 - [x] Landing, login step 1, login step 2 ported to React (visual only); AppShell rail + top bar
 - [x] `features/`: tenant (demo table), routing matcher, metrics, case event types; unit tests
@@ -86,7 +86,7 @@ Each phase ends with something a teammate can open in a browser. One branch per 
 - [ ] Email: invites, password reset, "an item is older than N days" (SMTP exists, used only for pilot replies; case notices go through n8n)
 - [x] SSO: Microsoft Entra (#47)
 - [x] Subdomain tenancy via `proxy.ts` (`TENANT_MODE=subdomain`)
-- [ ] Delete `legacy/demo/` and its two CI jobs once the port is complete
+- [x] Delete `legacy/demo/` and its two CI jobs (23 Sep)
 - [ ] The "before the first real customer" list in `docs/SECURITY.md`
 
 ## Decisions to make before Phase 2
@@ -96,5 +96,5 @@ Each phase ends with something a teammate can open in a browser. One branch per 
 4. Tailwind or not? (decided: not - tokens + CSS Modules, fewer concepts for the team)
 
 ## What stays where
-- `legacy/demo/` - the static demo. Keep it for sales calls until Phase 2 replaces it; then delete.
+- The static demo is gone; sales calls use the demo stage at `/acme`.
 - Strategy, outreach, competitor docs - outside the repo (Startup_speed root). Untouched.
