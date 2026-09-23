@@ -172,7 +172,7 @@ export async function finishMicrosoftLogin(slug: string, origin: string, params:
     console.warn(`[microsoft] ${slug}: no person for ${email || "(no email)"}`);
     return loginWithError(slug, "unknown");
   }
-  if (!user.entraOid) await db.user.update({ where: { id: user.id }, data: { entraOid: oid } });
+  if (!user.entraOid) await db.user.update({ where: { id: user.id, companyId: company.id }, data: { entraOid: oid } });
 
   await issueSession(company.id, company.slug, user);
   return companyPrefix(slug) + (flow.next || ROLE_HOME[user.role as Role]);

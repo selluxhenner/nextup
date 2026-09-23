@@ -247,11 +247,17 @@ export async function issueLoginCodeAction(_prev: LoginCodeState, form: FormData
 
   const slug = String(form.get("slug") ?? "");
   const userId = String(form.get("userId") ?? "");
-  const user = await getDb().user.findFirst({ where: { id: userId, company: { slug } }, select: { id: true, name: true } });
-  if (!user) return { error: "No such person in this company." };
+  const company = await getDb().company.findUnique({ where: { slug }, select: { id: true } });
+  const user = company
+    ? await getDb().user.findFirst({ where: { id: userId, companyId: company.id }, select: { id: true, name: true } })
+    : null;
+  if (!company || !user) return { error: "No such person in this company." };
 
   const code = generateLoginCode(slug);
-  await getDb().user.update({ where: { id: user.id }, data: { loginCodeHash: hashLoginCode(code), loginCodeAt: new Date() } });
+  await getDb().user.update({
+    where: { id: user.id, companyId: company.id },
+    data: { loginCodeHash: hashLoginCode(code), loginCodeAt: new Date() },
+  });
   revalidatePath("/admin", "layout");
   return { slug, name: user.name, code };
 }

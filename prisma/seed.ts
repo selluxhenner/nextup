@@ -67,7 +67,7 @@ async function main() {
     // someone is already using to get in.
     if (!user.loginCodeHash || newCodes) {
       const code = generateLoginCode(company.slug);
-      await db.user.update({ where: { id: user.id }, data: { loginCodeHash: hashLoginCode(code), loginCodeAt: new Date() } });
+      await db.user.update({ where: { id: user.id, companyId: company.id }, data: { loginCodeHash: hashLoginCode(code), loginCodeAt: new Date() } });
       printed.push(`  ${u.name.padEnd(14)} ${code}`);
     }
   }

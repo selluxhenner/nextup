@@ -107,6 +107,13 @@ describe("the identifying-lookup exception", () => {
     expect(scopeViolation("ApiToken", "findUnique", { where: { hash: "abc" } })).toBeNull();
   });
 
+  it("lets a person be found by their globally unique login-code hash", () => {
+    expect(scopeViolation("User", "findUnique", { where: { loginCodeHash: "abc" } })).toBeNull();
+    expect(scopeViolation("User", "findMany", { where: { loginCodeHash: "abc" } })).toBeInstanceOf(Error);
+    expect(scopeViolation("User", "update", { where: { loginCodeHash: "abc" } })).toBeInstanceOf(Error);
+    expect(scopeViolation("User", "findUnique", { where: { loginCodeHash: "abc", role: "manager" } })).toBeInstanceOf(Error);
+  });
+
   it("does not widen into a general read of the table", () => {
     // Only the unique column, on its own, on a single-row read.
     expect(scopeViolation("ApiToken", "findMany", { where: { hash: "abc" } })).toBeInstanceOf(Error);

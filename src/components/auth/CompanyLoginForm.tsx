@@ -22,6 +22,8 @@ export function CompanyLoginForm({ slug, short, next, microsoftHref, microsoftEr
   // Our own message for an empty field, instead of the browser's "Please fill out this field"
   // bubble (the form is noValidate). Cleared as soon as they type.
   const [localError, setLocalError] = useState<string | null>(null);
+  // Controlled, so a wrong code stays in the field to fix - React resets a form after its action.
+  const [code, setCode] = useState("");
   const error = localError ?? state.error;
 
   return (
@@ -29,7 +31,6 @@ export function CompanyLoginForm({ slug, short, next, microsoftHref, microsoftEr
       className={styles.form}
       action={act}
       onSubmit={(e) => {
-        const code = (e.currentTarget.elements.namedItem("code") as HTMLInputElement).value;
         if (!code.trim()) {
           e.preventDefault();
           setLocalError(`Enter your personal login code. Your team leader has it - it looks like ${slug}-xxxx-xxxx-xxxx.`);
@@ -57,7 +58,11 @@ export function CompanyLoginForm({ slug, short, next, microsoftHref, microsoftEr
           autoComplete="one-time-code"
           autoCapitalize="none"
           spellCheck={false}
-          onChange={() => setLocalError(null)}
+          value={code}
+          onChange={(e) => {
+            setCode(e.target.value);
+            setLocalError(null);
+          }}
           aria-invalid={error ? true : undefined}
           aria-describedby={error ? "code-error" : undefined}
           autoFocus
