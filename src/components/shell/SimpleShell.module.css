@@ -47,6 +47,7 @@
 
 @media (max-width: 760px) {
   .bar { grid-template-columns: auto 1fr auto; height: 56px; }
+  .content { padding-bottom: 16px; }
   .logo { height: 28px; }
   .nav { justify-self: center; }
   .navItem { padding: 7px 12px; font-size: 13px; }
