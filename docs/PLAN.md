@@ -44,42 +44,50 @@ That is what gives each company its own branding now and its own SSO later.
 Each phase ends with something a teammate can open in a browser. One branch per task, PR to
 `main`, Kevin merges (`CONTRIBUTING.md`).
 
+> **Status checked against the code on 23 Sep 2026** (main at #48). Where the build went a
+> different way than planned, the line says so.
+
 ### Phase 0 - Repo + scaffold (done 15 Sep)
 - [x] Next.js 16 app at the repo root; static demo moved to `legacy/demo/` (still in CI)
 - [x] Every route exists (`docs/ROUTES.md`); `src/config/roles.ts`: ROLE_HOME, ROLE_ACCESS, NAV
 - [x] Landing, login step 1, login step 2 ported to React (visual only); AppShell rail + top bar
 - [x] `features/`: tenant (demo table), routing matcher, metrics, case event types; unit tests
 - [x] CI: lint, typecheck, test, build; CLAUDE.md / CONTRIBUTING.md / CODEOWNERS updated
-- [x] Rename the GitHub repo `agility-dashborad` -> `nexthub` (done 15 Sep)
-- [ ] Hosting: Vercel project on `main` (Kevin)
+- [x] Rename the GitHub repo `agility-dashborad` -> `nexthub` -> `nextup`
+- [x] Hosting: Vercel project on `main` (`docs/DEPLOY.md`)
 
-### Phase 1 - Finish the public side (2-3 days)
-- [ ] Pricing and contact pages with real copy; contact form (server action; email later)
-- [ ] Signup / invite / forgot-password as real forms that validate (zod) and redirect
-- [ ] Login step 1 looks up the tenant (`findTenantByEmail`) and redirects; unknown -> inline error
+### Phase 1 - Finish the public side
+- [x] Pricing and contact pages with real copy; contact form stores a pilot request, answered from `/admin/requests`
+- [ ] Signup / invite / forgot-password as real forms that validate (zod) and redirect (all three are still stubs)
+- [x] Login step 1 looks up the company by name or email domain (`findCompany`); unknown -> inline error
 - [ ] Mobile pass on every public page
 
-### Phase 2 - Sessions, tenant guard, role homes with seed data (1-2 weeks)
-- [ ] Prisma schema + seed (port `legacy/demo/js/data.js` into company `acme`)
-- [ ] Auth.js credentials; session `{userId, companySlug, role}`; `proxy.ts` enforces login + `ROLE_ACCESS`
-- [ ] Role router reads the session; AppShell shows the real user; log out
-- [ ] `features/cases/reducer.ts`: port `legacy/demo/js/store.js` + its 16 tests
-- [ ] **Member** `/team`: My cases + raise field with routing proposal
-- [ ] **Leader** `/leader`: Inbox by age; four actions through one input sheet -> server actions
-- [ ] **Manager** `/manager`: Overview - `features/metrics` computes the ledger from cases + events
-- [ ] Dev panel (dev only): switch role, demo data off (empty states, "measured in pilot"), reset
+### Phase 2 - Sessions, tenant guard, role homes with seed data
+- [x] Prisma schema + seed; company content (departments, routing, cases) in `Company.seedJson`
+- [x] Sessions: signed cookie `features/auth/cookie.ts` instead of Auth.js; `proxy.ts` enforces login + `ROLE_ACCESS`
+- [x] Personal login codes + Microsoft Entra sign-in (#47); demo vs real-people stages via `policyFor()` (#46)
+- [x] Role router reads the session; AppShell shows the real user; log out
+- [x] `features/cases/reducer.ts`: port of `legacy/demo/js/store.js` + its tests
+- [x] **Member** `/raise` + `/team` (what happened to what I sent) + `/dashboard`
+- [x] **Leader** `/leader`: Inbox by age; actions through one input sheet -> server actions
+- [x] **Manager** `/manager`: Overview - `features/metrics` computes the ledger from cases + events
+- [x] Dev panel (demo stage only): switch person, demo data off, reset
+- [ ] Real companies: the views still go through `DemoProvider` and match the signed-in person to the seed by name - move to the `User` row
 
-### Phase 3 - Shared views, settings, e2e (1 week)
-- [ ] Problems, Ideas (co-sign / approve / fund), Collaboration, Progress, Case detail timeline
-- [ ] Settings: company (departments), members (invite, role), routing table editor
-- [ ] Playwright e2e: login flow; the whole inbox loop (port of `.github/ci/flow.test.cjs`)
+### Phase 3 - Shared views, settings, e2e
+- [x] Problems, Ideas, Collaboration, Progress, Case detail timeline
+- [ ] Settings -> Members: list people, change role, issue a login code, deactivate (today only in `/admin`)
+- [ ] Settings -> Company: name, departments (page is a stub)
+- [ ] Settings -> Routing: editor (page is read-only from the seed)
+- [ ] Playwright e2e: login flow; the whole inbox loop (only `tests/e2e/admin-flow.cjs` exists)
 
 ### Phase 4 - Pilot-ready
-- [ ] A second company in the seed to prove isolation; per-company logo and accent
-- [ ] Email: invites, password reset, "an item is older than N days"
-- [ ] SSO (Microsoft Entra first - the target list is mid-size German industry)
-- [ ] Subdomain tenancy via `proxy.ts`
+- [ ] A second company in the seed to prove isolation (`tests/db/isolation.test.ts` covers the DB side); per-company logo and accent
+- [ ] Email: invites, password reset, "an item is older than N days" (SMTP exists, used only for pilot replies; case notices go through n8n)
+- [x] SSO: Microsoft Entra (#47)
+- [x] Subdomain tenancy via `proxy.ts` (`TENANT_MODE=subdomain`)
 - [ ] Delete `legacy/demo/` and its two CI jobs once the port is complete
+- [ ] The "before the first real customer" list in `docs/SECURITY.md`
 
 ## Decisions to make before Phase 2
 1. Does a Leader also get "My cases"? (default: yes - everyone can raise; NAV already says so)
