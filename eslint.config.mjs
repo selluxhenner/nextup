@@ -21,10 +21,6 @@ const eslintConfig = defineConfig([
     // src/ references it. Without this, `npm run lint` fails on main. (Kevin: flagged in the PR.)
     "support.js",
     "NextUp.dc.html",
-    // Browser-driven e2e scripts. Same reason .github/ci/** is ignored: they are CommonJS and
-    // resolve playwright from a side install via NODE_PATH, so they are not part of the app's
-    // module system and the app's rules do not apply to them.
-    "tests/e2e/**",
   ]),
 ]);
 
