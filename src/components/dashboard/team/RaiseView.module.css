@@ -70,7 +70,7 @@
 .pickSearch input { width: 100%; box-sizing: border-box; border: 1px solid #e6edf1; border-radius: 10px; padding: 8px 10px; font-family: inherit; font-size: 13px; color: var(--nh-ink); outline: 0; }
 .pickSearch input:focus { border-color: var(--nh-brand-line); box-shadow: 0 0 0 3px var(--nh-brand-tint); }
 .pickList { max-height: 236px; overflow-y: auto; padding: 6px 6px 8px; }
-.pickGroup { display: block; padding: 8px 8px 2px; font-family: var(--nh-mono); font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: #9aa5b1; }
+.pickGroup { display: block; padding: 8px 8px 2px; font-family: var(--nh-mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: #9aa5b1; }
 .pickRow { display: flex; align-items: center; gap: 10px; width: 100%; border: 0; background: transparent; cursor: pointer; border-radius: 10px; padding: 7px 8px; text-align: left; font-family: inherit; }
 .pickRow:hover { background: #f6f9fa; }
 .pickMark { display: flex; align-items: center; justify-content: center; width: 18px; height: 18px; flex: none; border-radius: 6px; border: 1px solid #dde5ea; background: var(--nh-card); color: #fff; font-size: 11px; }
@@ -84,11 +84,11 @@
 .pickPage { display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; border: 1px solid #e6edf1; border-radius: 7px; background: var(--nh-card); color: var(--nh-ink); cursor: pointer; font-family: inherit; font-size: 15px; line-height: 1; padding: 0 0 2px; }
 .pickPage:hover:not(:disabled) { background: #f6f9fa; }
 .pickPage:disabled { opacity: 0.35; cursor: default; }
-.pickPageN { font-family: var(--nh-mono); font-size: 10px; letter-spacing: 0.06em; color: #8b98a5; min-width: 34px; text-align: center; }
+.pickPageN { font-family: var(--nh-mono); font-size: 11px; letter-spacing: 0.06em; color: #8b98a5; min-width: 34px; text-align: center; }
 /* A department row: the checkbox takes the whole department, the small button opens its people. */
 .pickDeptRow { display: flex; align-items: center; gap: 4px; }
 .pickDeptRow .pickRow { min-width: 0; flex: 1; }
-.pickSub { display: flex; align-items: center; gap: 3px; flex: none; height: 24px; padding: 0 6px 0 8px; border: 1px solid #e6edf1; border-radius: 8px; background: var(--nh-card); color: #8b98a5; cursor: pointer; font-family: var(--nh-mono); font-size: 10px; }
+.pickSub { display: flex; align-items: center; gap: 3px; flex: none; height: 24px; padding: 0 6px 0 8px; border: 1px solid #e6edf1; border-radius: 8px; background: var(--nh-card); color: #8b98a5; cursor: pointer; font-family: var(--nh-mono); font-size: 11px; }
 .pickSub:hover { color: var(--nh-ink); background: #f6f9fa; }
 .pickSub[aria-expanded="true"] { border-color: var(--nh-brand-line); color: var(--nh-brand); background: var(--nh-brand-tint); }
 .pickSubChev { display: inline-block; font-size: 14px; line-height: 1; transition: transform 0.15s ease; }
@@ -96,7 +96,7 @@
 .pickNest { margin: 2px 0 4px 18px; padding-left: 8px; border-left: 2px solid #eef2f5; }
 .pickNest .pickLabel { font-size: 13px; }
 .pickFoot { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border-top: 1px solid #eef2f5; background: #fcfdfd; }
-.pickCount { font-family: var(--nh-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: #8b98a5; }
+.pickCount { font-family: var(--nh-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #8b98a5; }
 .pickBtns { display: flex; gap: 6px; }
 .pickClear { border: 0; background: transparent; cursor: pointer; font-family: inherit; font-size: 13px; color: #8b98a5; padding: 6px 8px; }
 .pickClear:hover { color: var(--nh-ink); }
@@ -129,7 +129,7 @@
 .state:not([data-on="true"]) { visibility: hidden; pointer-events: none; }
 .cardHead { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 16px clamp(18px, 2.4vw, 30px) 12px; border-bottom: 1px solid #e7edf1; }
 .cardTitle { display: flex; align-items: center; gap: 10px; margin: 0; font-family: var(--nh-serif); font-size: 21px; font-weight: 400; letter-spacing: 0; color: var(--nh-ink); }
-.cardTag { font-family: var(--nh-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: #7b8794; white-space: nowrap; }
+.cardTag { font-family: var(--nh-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #7b8794; white-space: nowrap; }
 
 /* Four columns split by hairlines, the sketch of each stage on top and the words under it. */
 .how { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); /* four across or two by two (below), never 3 + 1 */ gap: 26px 0; padding: 22px clamp(18px, 2.4vw, 30px) 28px; }
@@ -144,8 +144,8 @@
 .miniBulb { width: 14px; height: 14px; border-radius: 50%; flex: none; background: linear-gradient(110deg, #f0c23a 0%, #fff3d0 50%, #e6a919 100%); }
 .miniBar { flex: 1; height: 5px; border-radius: 3px; background: #dde5ea; }
 .miniTags { display: flex; gap: 5px; }
-.miniTags span, .miniFlight { font-family: var(--nh-mono); font-size: 9px; text-transform: uppercase; letter-spacing: 0.04em; color: #5c6773; border: 1px solid #e7edf1; border-radius: 5px; padding: 2px 6px; }
-.miniL { font-family: var(--nh-mono); font-size: 9px; text-transform: uppercase; letter-spacing: 0.04em; color: #5c6773; width: 58px; flex: none; }
+.miniTags span, .miniFlight { font-family: var(--nh-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: #5c6773; border: 1px solid #e7edf1; border-radius: 5px; padding: 2px 6px; }
+.miniL { font-family: var(--nh-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: #5c6773; width: 58px; flex: none; }
 .miniTrack { flex: 1; height: 5px; border-radius: 3px; background: #eef2f5; overflow: hidden; }
 .mini > .miniTrack { flex: none; } /* on its own row it must not grow into the column */
 .miniFill { display: block; height: 100%; background: var(--nh-brand); opacity: 0.75; }
@@ -153,7 +153,7 @@
 .miniDots span { width: 7px; height: 7px; border-radius: 2px; background: #e4ebef; }
 .miniDots span[data-on="true"] { background: var(--nh-brand); }
 .miniFaces { display: flex; }
-.miniFaces span { width: 24px; height: 24px; border-radius: 50%; background: var(--nh-ink); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 600; border: 2px solid #fff; }
+.miniFaces span { width: 24px; height: 24px; border-radius: 50%; background: var(--nh-ink); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; border: 2px solid #fff; }
 .miniFaces span + span { margin-left: -8px; }
 .miniFlight { color: var(--nh-brand); background: var(--nh-brand-tint); border: 0; }
 
@@ -162,7 +162,7 @@
 .ctxField::placeholder { color: var(--nh-mute-2); }
 .ctxField:focus { border-color: var(--nh-brand-line); box-shadow: 0 0 0 3px var(--nh-brand-tint); }
 .prompts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.promptsL { font-family: var(--nh-mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: #9aa5b1; margin-right: 2px; }
+.promptsL { font-family: var(--nh-mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: #9aa5b1; margin-right: 2px; }
 .prompt { cursor: pointer; border: 1px solid #e6edf1; background: var(--nh-card); border-radius: 999px; padding: 6px 13px; font-family: inherit; font-size: 12.5px; color: #5c6773; }
 .prompt:hover { background: #f6f9fa; }
 
@@ -171,7 +171,7 @@
 .orb { display: flex; width: 96px; height: 96px; flex: none; } /* the thinking-orbs canvas (ORB_PX), ink; still once evaluated */
 .evalHead { margin: 2px 0 0; font-family: var(--nh-serif); font-size: 30px; line-height: 1.1; font-weight: 400; letter-spacing: 0; color: var(--nh-ink); }
 .evalNow { display: flex; align-items: baseline; justify-content: center; flex-wrap: wrap; gap: 4px 10px; margin: 0; font-size: 16px; font-weight: 600; color: var(--nh-ink-2); animation: land 0.25s ease-out; }
-.evalN { font-family: var(--nh-mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: #9aa5b1; }
+.evalN { font-family: var(--nh-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #9aa5b1; }
 .evalDetail { margin: 0; max-width: 620px; font-size: 13.5px; line-height: 1.45; color: var(--nh-ink-2); text-wrap: pretty; animation: land 0.25s ease-out; }
 .evalTrack { list-style: none; display: flex; gap: 5px; width: min(100%, 360px); margin: 6px 0 0; padding: 0; }
 .evalSeg { flex: 1; height: 5px; border-radius: 3px; background: #e4ebef; transition: background 0.3s ease; }
