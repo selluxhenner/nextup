@@ -1,5 +1,5 @@
 /* The app chrome. Ports nh-root / nh-rail / nh-topbar / nh-content from legacy/demo. */
-.root { height: 100dvh; overflow: hidden; display: flex; } /* the blue Ground paints the surface */
+.root { height: var(--nh-screen-h); overflow: hidden; display: flex; } /* the blue Ground paints the surface */
 
 .rail { width: 246px; flex: none; background: var(--nh-dark); display: flex; flex-direction: column; padding: 20px 14px 70px; overflow: auto; transition: transform 0.22s ease; }
 .brand { display: flex; align-items: center; gap: 10px; padding: 0 8px 20px; }
