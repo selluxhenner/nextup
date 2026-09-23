@@ -8,7 +8,7 @@ export function SiteHeader({ onLoginPage = false }: { onLoginPage?: boolean }) {
   return (
     <header className={styles.nav}>
       <Link className={styles.logo} href="/" aria-label={`${SITE.name} home`}>
-        <Image src="/brand/nextup-horizontal-black.png" alt={SITE.name} width={140} height={72} priority />
+        <Image src="/brand/nextup-logo-blue.png" alt={SITE.name} width={506} height={224} priority />
       </Link>
       <nav className={styles.links} aria-label="Site">
         <Link href="/#how">How it works</Link>

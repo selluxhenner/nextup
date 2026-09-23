@@ -1,9 +1,8 @@
 .shell { min-height: 100dvh; display: grid; grid-template-columns: minmax(300px, 5fr) 7fr; } /* the blue Ground paints the surface */
 
 .side { background: var(--nh-dark); color: var(--nh-on-dark); padding: 28px 36px; display: flex; flex-direction: column; gap: 32px; }
-.logo { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 17px; letter-spacing: -0.02em; color: var(--nh-on-dark); }
-.logo:hover { color: #fff; }
-.logo img { border-radius: 7px; }
+.logo { display: flex; align-items: center; align-self: flex-start; line-height: 0; }
+.logo img { height: 34px; width: auto; }
 .sideBody { margin: auto 0; display: grid; gap: 16px; max-width: 34ch; }
 .sideBody :global(.nh-eyebrow) { color: var(--nh-on-dark-mute); }
 .sideBody h2 { font-size: clamp(26px, 3vw, 36px); font-weight: 800; }

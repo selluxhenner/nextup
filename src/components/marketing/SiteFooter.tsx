@@ -8,8 +8,7 @@ export function SiteFooter() {
     <footer className={styles.footer}>
       <div className={styles.top}>
         <div className={styles.brand}>
-          <Image src="/brand/logo.png" alt="" width={22} height={22} />
-          <span>{SITE.name}</span>
+          <Image src="/brand/nextup-logo-blue.png" alt={SITE.name} width={506} height={224} />
         </div>
         <nav className={styles.links} aria-label="Footer">
           <Link href="/#how">How it works</Link>

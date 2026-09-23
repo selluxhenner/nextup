@@ -39,8 +39,7 @@ export function AuthShell({ side, children, art }: Props) {
       <Ground />
       <aside className={styles.side}>
         <Link className={styles.logo} href="/" aria-label={`${SITE.name} home`}>
-          <Image src="/brand/logo.png" alt="" width={28} height={28} />
-          <span>{SITE.name}</span>
+          <Image src="/brand/nextup-logo-blue.png" alt={SITE.name} width={506} height={224} />
         </Link>
         <div className={styles.sideBody}>{side}</div>
         <p className={`${styles.sideFoot} nh-mono`}>Berlin · 2026</p>
