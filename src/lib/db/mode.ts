@@ -3,7 +3,8 @@
 // "Configured" (DATABASE_URL set) is not the same as "reachable": a colleague who copied
 // .env.example but has no Docker has the first and not the second. src/instrumentation.ts probes
 // once at startup and, when nothing answers, flips the flag here - from then on every
-// hasDatabase() caller takes the demo path exactly as if DATABASE_URL were unset.
+// hasDatabase() caller takes the demo path exactly as if DATABASE_URL were unset. The same
+// happens when Postgres disappears later (client.ts orDemo), and it flips back once it answers.
 //
 // No Prisma import in this file, on purpose: the proxy reads it too and must not pull the client.
 // The flag lives on globalThis because Next's dev server re-evaluates modules on every edit.
@@ -21,4 +22,8 @@ export function databaseOutage(): string | null {
 
 export function markDatabaseUnreachable(reason: string) {
   globalForMode.__nextupDbUnreachable = reason;
+}
+
+export function markDatabaseReachable() {
+  delete globalForMode.__nextupDbUnreachable;
 }

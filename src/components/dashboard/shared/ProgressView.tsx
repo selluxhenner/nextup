@@ -2,18 +2,18 @@
 // Does the system actually move: the funnel, whether shipped work delivered, what is stuck the
 // longest, and whether people got an answer. Port of the PROGRESS block in legacy/demo/index.html.
 import { useDemo } from "@/components/dashboard/DemoProvider";
-import { PageSkeleton } from "@/components/ui/Skeleton";
 import { Avatar, Pill, verdictTone } from "@/components/dashboard/shared/primitives";
 import { ViewHead } from "@/components/dashboard/shared/ViewHead";
 import { contributors, funnel, stalled } from "@/features/metrics";
 import { fmt } from "@/lib/utils/format";
 import ui from "@/components/dashboard/shared/ui.module.css";
 import styles from "./ProgressView.module.css";
+import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 
 export function ProgressView() {
   const ctx = useDemo();
   const { seed, D, N, demo, persona, ready } = ctx;
-  if (!ready) return <PageSkeleton />;
+  if (!ready) return <PageSkeleton kind="list" delay />;
   const M = seed.metrics, P = seed.promiseDays, O = seed.outcomeDays;
   const steps = funnel(N);
   const stuck = stalled(D);

@@ -61,6 +61,7 @@ export type DemoContext = {
   tenant: TenantInfo;
   seed: Seed;
   ready: boolean;
+  serverMode: boolean; // a session and Postgres behind the page; false = the localStorage demo
   S: State; D: DemoData; N: Counts; log: EventLog;
   role: Role; setRole: (r: Role) => void;
   leadAs: string | null; setLeadAs: (name: string) => void;
@@ -87,11 +88,13 @@ export function useDemo(): DemoContext {
   return c;
 }
 
-// First visit: the URL says which role the visitor meant (/leader -> leader, /raise, /dashboard or /team -> member).
+// First visit: the URL says which role the visitor meant (/manager or /settings -> manager, /leader -> leader).
+// Everything else - the front door /[company] included - starts as the employee: the login sends
+// people in there, and the employee's Raise page is where every case begins.
 function roleFromPath(path: string): Role {
+  if (path === "/manager" || path.startsWith("/manager/") || path === "/settings" || path.startsWith("/settings/")) return "manager";
   if (path === "/leader" || path.startsWith("/leader/")) return "leader";
-  if (path === "/raise" || path === "/dashboard" || path === "/team" || path.startsWith("/team/")) return "member";
-  return "manager";
+  return "member";
 }
 
 const iniOf = (name: string) => name.split(" ").map((w) => w[0]).join("").slice(0, 2);
@@ -175,10 +178,13 @@ export function DemoProvider({ tenant, seed, initialLog, viewer, children }: Pro
   const [dev, setDev] = useState(false);
   const [today] = useState(() => new Date()); // views render dates only once `ready`, so server/client never disagree on screen
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Set by logout: the persona is being forgotten and the login page is next, so the access
+  // check below must not send a manager on /manager "home" as whatever role the URL guessed.
+  const leaving = useRef(false);
 
   // Roles are data: a role that may not open this path is sent home.
   useEffect(() => {
-    if (ready && !canAccess(role, appPath)) router.replace("/" + slug + ROLE_HOME[role]);
+    if (ready && !leaving.current && !canAccess(role, appPath)) router.replace("/" + slug + ROLE_HOME[role]);
   }, [ready, role, appPath, router, slug]);
 
   // Server mode: pick up what other people did. Without this, two testers each see only their
@@ -397,7 +403,11 @@ export function DemoProvider({ tenant, seed, initialLog, viewer, children }: Pro
   }, [S, slug, showToast, serverMode, router_refresh]);
 
   // Log out: forget the persona in this browser and go back to the company login. Demo log stays.
+  // `leaving` first: clearing the prefs drops the role to the page-load guess, and without the
+  // flag the access effect would bounce a manager or team leader back to that role's home
+  // instead of the login page (the employee never noticed - /raise is open to every role).
   const logout = useCallback(() => {
+    leaving.current = true;
     clearPrefs(slug);
     closeAll(); setSheet(null);
     if (serverMode) {
@@ -419,7 +429,7 @@ export function DemoProvider({ tenant, seed, initialLog, viewer, children }: Pro
   }, [S, showToast]);
 
   const value: DemoContext = {
-    tenant, seed, ready, S, D, N, log,
+    tenant, seed, ready, serverMode, S, D, N, log,
     role, setRole, leadAs, setLeadAs, persona, actor, email,
     demo, toggleDemo: () => setPrefs(slug, { demo: !demo }),
     dept, setDept: (id) => { setPrefs(slug, { dept: id }); setMenu(false); }, matches: (depts) => dept === "All" || depts.includes(dept), deptName,

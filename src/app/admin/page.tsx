@@ -1,63 +1,94 @@
-// The company list plus the create form. The whole "add a customer" flow.
+// Overview: what needs you right now, and the numbers at a glance. Every detail lives on its own
+// page (Requests, Companies, Connections); this one only points at them.
 import { redirect } from "next/navigation";
-import { isAdmin, listCompanies, listPilotRequests } from "@/server/actions/admin";
-import { CreateCompany } from "@/components/admin/CreateCompany";
-import { CompanyList } from "@/components/admin/CompanyList";
-import { PilotRequests } from "@/components/admin/PilotRequests";
-import { databaseOutage, hasDatabase } from "@/lib/db/client";
+import { isAdmin } from "@/server/actions/admin";
+import { adminContext } from "@/server/admin-context";
+import { adminBase, connectionProblems } from "@/features/admin/nav";
+import { STAGES } from "@/features/admin/stages";
+import { RequestList } from "@/components/admin/RequestList";
 import styles from "./admin.module.css";
 
-export default async function AdminPage() {
-  if (!(await isAdmin())) redirect(process.env.TENANT_MODE === "subdomain" ? "/login" : "/admin/login");
+export default async function AdminOverview() {
+  if (!(await isAdmin())) redirect(adminBase() + "/login");
+  const ctx = await adminContext();
+  const base = adminBase();
 
-  if (!hasDatabase()) {
-    return (
-      <section className={styles.card}>
-        <h1>Companies</h1>
-        <p className="nh-hint">
-          {databaseOutage()
-            ? `DATABASE_URL is set but ${databaseOutage()}, so there is nothing to list. `
-            : "No DATABASE_URL is configured, so there is nothing to list. "}
-          Start the stack with <code>docker compose up</code>, or start Postgres and restart the dev server.
-        </p>
-      </section>
-    );
-  }
+  const problems = connectionProblems({
+    database: ctx.database.state,
+    automation: ctx.automation?.summary.state ?? null,
+    tasks: ctx.taskCounts,
+    mail: ctx.mailState,
+  });
+  const byStage = STAGES.map((s) => ({ stage: s, n: ctx.companies.filter((c) => c.stage === s).length }));
+  // Oldest first: the one closest to breaking the two-working-day promise is the one to answer.
+  const waiting = [...ctx.open].sort((a, b) => a.createdAt.localeCompare(b.createdAt)).slice(0, 5);
 
-  const [companies, requests] = await Promise.all([listCompanies(), listPilotRequests()]);
-  const open = requests.filter((r) => !r.handledAt).length;
   return (
     <>
       <section className={styles.card}>
-        <h1>Pilot requests</h1>
-        <p className="nh-hint">
-          {requests.length === 0
-            ? "None yet. Every real submit of the /contact form lands here."
-            : open === 0
-              ? `All ${requests.length} replied to.`
-              : `${open} waiting for a reply - the two-working-day promise applies to us too.`}
-        </p>
-        <PilotRequests requests={requests} />
+        <h1>Overview</h1>
+        <div className={styles.counts}>
+          <a className={styles.count} href={`${base}/requests`} data-tone={ctx.overdue.length ? "bad" : ctx.open.length ? "warn" : undefined}>
+            <span className={styles.countValue}>{ctx.open.length}</span>
+            <span className={styles.countLabel}>
+              open {ctx.open.length === 1 ? "request" : "requests"}
+              {ctx.overdue.length ? ` · ${ctx.overdue.length} overdue` : ""}
+            </span>
+          </a>
+          <a className={styles.count} href={`${base}/companies`}>
+            <span className={styles.countValue}>{ctx.companies.length}</span>
+            <span className={styles.countLabel}>{ctx.companies.length === 1 ? "company" : "companies"}</span>
+          </a>
+          {byStage.map((s) => (
+            <a key={s.stage} className={styles.count} href={`${base}/companies`}>
+              <span className={styles.countValue}>{s.n}</span>
+              <span className={styles.countLabel}>in {s.stage}</span>
+            </a>
+          ))}
+          <a className={styles.count} href={`${base}/connections`} data-tone={problems[0]?.tone}>
+            <span className={styles.countValue}>{problems.length === 0 ? "OK" : problems.length}</span>
+            <span className={styles.countLabel}>{problems.length === 0 ? "connections" : problems.map((p) => p.badge).join(" · ")}</span>
+          </a>
+        </div>
       </section>
 
       <section className={styles.card}>
-        <h2>Companies</h2>
+        <div className={styles.cardHead}>
+          <h2>Waiting for a reply</h2>
+          <a href={`${base}/requests`} className="nh-btn nh-btn-ghost nh-btn-sm">All requests</a>
+        </div>
         <p className="nh-hint">
-          {companies.length === 0
-            ? "None yet. Add the first one below - it is live the moment it is saved, no deploy."
-            : `${companies.length} ${companies.length === 1 ? "company" : "companies"}, each on its own address.`}
+          {ctx.open.length === 0
+            ? "Nothing open. Every real submit of the /contact form lands in Requests."
+            : `Oldest first. ${ctx.overdue.length ? `${ctx.overdue.length} past the two-working-day promise.` : "None past the two-working-day promise yet."}`}
         </p>
-        <CompanyList companies={companies} />
+        <RequestList requests={waiting} base={base} view="open" />
       </section>
 
-      <section className={styles.card}>
-        <h2>Add a company</h2>
-        <p className="nh-hint">
-          The slug becomes the subdomain. Pick the demo template to clone Acme&rsquo;s content, or an
-          empty one for a real customer starting from nothing.
-        </p>
-        <CreateCompany />
-      </section>
+      {problems.length ? (
+        <section className={styles.card}>
+          <div className={styles.cardHead}>
+            <h2>Connections need a look</h2>
+            <a href={`${base}/connections`} className="nh-btn nh-btn-ghost nh-btn-sm">Open Connections</a>
+          </div>
+          <ul className={styles.problemList}>
+            {problems.map((p) => (
+              <li key={p.badge} data-tone={p.tone}>{p.badge}</li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {ctx.live ? (
+        <section className={styles.card}>
+          <h2>Next steps</h2>
+          <div className={styles.quick}>
+            <a className="nh-btn nh-btn-ghost" href={`${base}/companies#new`}>Add a company</a>
+            <a className="nh-btn nh-btn-ghost" href={`${base}/requests?view=all`}>Search requests</a>
+            <a className="nh-btn nh-btn-ghost" href={`${base}/connections#automation`}>Check n8n</a>
+          </div>
+        </section>
+      ) : null}
     </>
   );
 }

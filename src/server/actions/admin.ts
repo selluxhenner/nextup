@@ -10,6 +10,7 @@ import { redirect } from "next/navigation";
 import { timingSafeEqual } from "node:crypto";
 import { generateAccessCode, hashAccessCode } from "@/features/auth/access-code";
 import { ADMIN_COOKIE, signAdmin, verifyAdmin } from "@/features/auth/cookie";
+import type { CompanyRow, PilotRequestRow } from "@/features/admin/rows";
 import { seedTemplate } from "@/features/demo";
 import { toSeedJson } from "@/features/demo/parse";
 import {
@@ -20,9 +21,29 @@ import {
   type NewCompany,
   type NewPerson,
 } from "@/features/tenant/create";
-import { getDb, hasDatabase } from "@/lib/db/client";
+import { databaseOutage, getDb, hasDatabase, orDemo, reconnectDatabase } from "@/lib/db/client";
+import { automationFor, raisesFor } from "@/lib/db/automation";
+import { databaseFacts, type DatabaseFacts } from "@/lib/db/health";
+import { describeDatabase, type DatabaseReport } from "@/features/admin/health";
+import { isStage, STAGES } from "@/features/admin/stages";
 import { createToken } from "@/lib/db/tokens";
+import {
+  healthUrlFrom,
+  summarise,
+  type AutomationReport,
+  type InstanceFacts,
+} from "@/features/integrations/automation";
+import { classify, type AutomationTaskView } from "@/features/integrations/tasks";
+import { buildRaisedNotice, companyBaseUrl, deliverRaisedNotice } from "@/server/notify-n8n";
+import { parseSeed } from "@/features/demo/parse";
+import type { EventPayload } from "@/features/cases/events";
+import { companyUrl } from "@/features/tenant/urls";
+import { readEdit, readReply, validateEdit, validateReply, type Reply, type ReplyVia } from "@/features/admin/requests";
+import { sendMail } from "@/server/mail";
 import type { Role } from "@/config/roles";
+
+// The row shapes live in features/admin/rows.ts, next to the demo rows that mirror them.
+export type { CompanyRow, PilotRequestRow };
 
 const ADMIN_TTL_SECONDS = 8 * 60 * 60;
 
@@ -55,24 +76,15 @@ export async function adminSignIn(_prev: AdminLoginState, form: FormData): Promi
     secure: process.env.COOKIE_SECURE === "true",
     maxAge: ADMIN_TTL_SECONDS,
   });
-  redirect(adminHome());
+  // In subdomain mode the admin surface is the host root, so adminHome() is "" - and redirect("")
+  // is a TypeError: Invalid URL, not a redirect to the root.
+  redirect(adminHome() || "/");
 }
 
 export async function adminSignOut() {
   (await cookies()).delete(ADMIN_COOKIE);
   redirect(adminHome() + "/login");
 }
-
-export type CompanyRow = {
-  id: string;
-  slug: string;
-  name: string;
-  stage: string;
-  people: number;
-  events: number;
-  url: string;
-  createdAt: string;
-};
 
 export async function listCompanies(): Promise<CompanyRow[]> {
   if (!(await isAdmin()) || !hasDatabase()) return [];
@@ -222,34 +234,15 @@ function adminHome(): string {
   return process.env.TENANT_MODE === "subdomain" ? "" : "/admin";
 }
 
-function companyUrl(slug: string): string {
-  const domain = process.env.APP_DOMAIN ?? "localhost";
-  const scheme = process.env.PUBLIC_SCHEME ?? "http";
-  return process.env.TENANT_MODE === "subdomain"
-    ? `${scheme}://${slug}.${domain}`
-    : `${scheme}://${domain}/${slug}`;
-}
-
 // ---- Pilot requests from /contact ---------------------------------------------------------------
 
-export type PilotRequestRow = {
-  id: string;
-  name: string;
-  company: string;
-  email: string;
-  decision: string;
-  council: string;
-  message: string;
-  createdAt: string;
-  handledAt: string | null;
-};
-
-/** Newest first, open ones before handled ones. Everything the form saved, nothing more. */
+/** Newest first, open ones before handled ones, each with its reply thread. */
 export async function listPilotRequests(): Promise<PilotRequestRow[]> {
   if (!(await isAdmin()) || !hasDatabase()) return [];
   const rows = await getDb().pilotRequest.findMany({
     orderBy: [{ handledAt: { sort: "asc", nulls: "first" } }, { createdAt: "desc" }],
-    take: 100,
+    take: 200,
+    include: { replies: { orderBy: { sentAt: "asc" } } },
   });
   return rows.map((r) => ({
     id: r.id,
@@ -261,19 +254,308 @@ export async function listPilotRequests(): Promise<PilotRequestRow[]> {
     message: r.message,
     createdAt: r.createdAt.toISOString(),
     handledAt: r.handledAt?.toISOString() ?? null,
+    notes: r.notes,
+    replies: r.replies.map((x) => ({
+      id: x.id,
+      to: x.to,
+      subject: x.subject,
+      body: x.body,
+      via: x.via,
+      sentAt: x.sentAt.toISOString(),
+    })),
   }));
 }
 
 export type HandledState = { error?: string };
 
-/** The one update PilotRequest allows: it was replied to. Toggles, so a slip can be undone. */
+/** Replied / reopened. Toggles, so a slip can be undone. */
 export async function markPilotRequestHandled(_prev: HandledState, form: FormData): Promise<HandledState> {
   if (!(await isAdmin())) return { error: "Not signed in to the admin area." };
   if (!hasDatabase()) return { error: "No database is configured." };
 
   const id = String(form.get("id") ?? "");
   const handled = String(form.get("handled") ?? "") === "1";
-  await getDb().pilotRequest.update({ where: { id }, data: { handledAt: handled ? new Date() : null } });
-  revalidatePath("/admin");
+  await getDb().pilotRequest.updateMany({ where: { id }, data: { handledAt: handled ? new Date() : null } });
+  revalidatePath("/admin", "layout");
   return {};
+}
+
+export type EditRequestState = { saved?: number; problems?: string[] };
+
+/** Correct what the form captured, and keep internal notes next to it. */
+export async function updatePilotRequestAction(_prev: EditRequestState, form: FormData): Promise<EditRequestState> {
+  if (!(await isAdmin())) return { problems: ["Not signed in to the admin area."] };
+  if (!hasDatabase()) return { problems: ["No database is configured."] };
+
+  const id = String(form.get("id") ?? "");
+  const edit = readEdit(form);
+  const problems = validateEdit(edit);
+  if (problems.length) return { problems };
+
+  const { count } = await getDb().pilotRequest.updateMany({ where: { id }, data: edit });
+  if (count === 0) return { problems: ["That request is gone - someone deleted it."] };
+  revalidatePath("/admin", "layout");
+  return { saved: Date.now() };
+}
+
+export type ReplyState = {
+  sent?: number;
+  via?: ReplyVia;
+  problems?: string[];
+  /** Handed back on failure, so a mail server saying no does not cost the admin the draft. */
+  draft?: Reply;
+};
+
+/**
+ * Answer a request. intent=send mails it through SMTP_URL; intent=log records a reply written in
+ * the admin's own mail app. Either way it lands in the thread and the request counts as replied.
+ */
+export async function replyPilotRequestAction(_prev: ReplyState, form: FormData): Promise<ReplyState> {
+  if (!(await isAdmin())) return { problems: ["Not signed in to the admin area."] };
+  if (!hasDatabase()) return { problems: ["No database is configured."] };
+
+  const id = String(form.get("id") ?? "");
+  const via: ReplyVia = form.get("intent") === "log" ? "manual" : "smtp";
+  const reply = readReply(form);
+  const problems = validateReply(reply);
+  if (problems.length) return { problems, draft: reply };
+
+  const request = await getDb().pilotRequest.findUnique({ where: { id }, select: { email: true } });
+  if (!request) return { problems: ["That request is gone - someone deleted it."], draft: reply };
+
+  if (via === "smtp") {
+    const result = await sendMail({ to: request.email, subject: reply.subject, text: reply.body });
+    if (!result.ok) return { problems: [result.error], draft: reply };
+  }
+
+  const now = new Date();
+  await getDb().$transaction([
+    getDb().pilotReply.create({ data: { requestId: id, to: request.email, ...reply, via, sentAt: now } }),
+    getDb().pilotRequest.update({ where: { id }, data: { handledAt: now } }),
+  ]);
+  revalidatePath("/admin", "layout");
+  return { sent: now.getTime(), via };
+}
+
+export type DeleteRequestState = { deleted?: boolean; error?: string };
+
+/** Gone for good, replies included. The panel asks twice; the second ask sets confirm=yes. */
+export async function deletePilotRequestAction(_prev: DeleteRequestState, form: FormData): Promise<DeleteRequestState> {
+  if (!(await isAdmin())) return { error: "Not signed in to the admin area." };
+  if (!hasDatabase()) return { error: "No database is configured." };
+  if (form.get("confirm") !== "yes") return { error: "Confirm the delete first." };
+
+  const id = String(form.get("id") ?? "");
+  await getDb().pilotRequest.deleteMany({ where: { id } });
+  revalidatePath("/admin", "layout");
+  redirect(adminHome() + "/requests");
+}
+
+// ── Automation (n8n) ─────────────────────────────────────────────────────────
+// /admin is where the integration is set up - the API token is issued here - so it is also where
+// "is it actually working?" belongs. The app has no n8n API key (ops/n8n/README.md keeps
+// credentials in the n8n UI and out of this repo), so the answer is assembled from two things it
+// can see for itself: whether the instance answers /healthz, and what has come back as
+// system:n8n. The wording lives in features/integrations/automation.ts and is unit-tested.
+
+/** Ping n8n. Never throws and never waits long - the admin page must render either way. */
+async function pingInstance(hookUrl: string | null): Promise<boolean | null> {
+  const health = healthUrlFrom(hookUrl);
+  if (!health) return null;
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 1500);
+  try {
+    const res = await fetch(health, { signal: controller.signal, cache: "no-store" });
+    return res.ok;
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+export async function automationReport(): Promise<AutomationReport | null> {
+  if (!(await isAdmin()) || !hasDatabase()) return null;
+
+  const hookUrl = process.env.N8N_HOOK_URL ?? null;
+  const companies = await getDb().company.findMany({
+    orderBy: { createdAt: "desc" },
+    select: { id: true, slug: true, name: true },
+  });
+  const [rows, reachable] = await Promise.all([automationFor(companies), pingInstance(hookUrl)]);
+
+  const facts: InstanceFacts = {
+    hookUrl,
+    hookTokenSet: Boolean(process.env.N8N_HOOK_TOKEN),
+    reachable,
+  };
+  return { facts, companies: rows, summary: summarise(facts, rows) };
+}
+
+/**
+ * One timestamp, rendered on the server in a zone that does not depend on where it runs. The
+ * container is UTC and a browser is not, so letting a client component format this is a
+ * hydration mismatch - see AutomationTaskView.
+ */
+function stamp(iso: string): string {
+  return new Date(iso).toLocaleString("en-GB", {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: process.env.TZ || "Europe/Zurich",
+  });
+}
+
+/**
+ * Every raise and what the automation did about it, newest first.
+ *
+ * The owner is resolved with buildRaisedNotice - the same function that builds the real message -
+ * so this page cannot disagree with what was actually sent about who owns a route.
+ */
+export async function automationTasks(limit = 25): Promise<AutomationTaskView[]> {
+  if (!(await isAdmin()) || !hasDatabase()) return [];
+
+  const companies = await getDb().company.findMany({
+    select: { id: true, slug: true, name: true, demoDay: true, seedJson: true, users: { select: { name: true, email: true } } },
+  });
+  if (companies.length === 0) return [];
+
+  const byId = new Map(companies.map((c) => [c.id, c]));
+  const raises = await raisesFor(companies.map((c) => c.id), limit);
+  const now = Date.now();
+
+  return raises.map((r) => {
+    const company = byId.get(r.companyId);
+    const payload = (r.payload ?? {}) as EventPayload;
+    const notice = company
+      ? buildRaisedNotice({
+          slug: company.slug,
+          eventId: r.eventId,
+          caseId: r.caseId ?? "",
+          payload,
+          seed: parseSeed(company.seedJson),
+          people: company.users,
+          day: company.demoDay,
+          baseUrl: companyBaseUrl(company.slug),
+        })
+      : null;
+
+    const task = classify(
+      {
+        eventId: r.eventId,
+        slug: company?.slug ?? "",
+        companyName: company?.name ?? "",
+        caseId: r.caseId ?? "",
+        title: payload.title ?? "Untitled",
+        ownerName: notice?.route.ownerName ?? null,
+        ownerEmail: notice?.route.ownerEmail ?? null,
+        raisedAt: r.raisedAt,
+        noticeAt: r.noticeAt,
+      },
+      now,
+    );
+    return { ...task, raisedLabel: stamp(r.raisedAt) };
+  });
+}
+
+export type RetryState = { eventId?: string; ok?: boolean; error?: string };
+
+/**
+ * Send one raise to n8n again, and say what came back.
+ *
+ * Safe to press twice: the workflow writes back with `Idempotency-Key: notify:<eventId>`, so a
+ * second successful run answers 200 {"duplicate": true} and appends no second comment
+ * (docs/INTEGRATIONS.md). Unlike the raise path this awaits the answer - the whole point is to
+ * see the failure.
+ */
+export async function retryNoticeAction(_prev: RetryState, form: FormData): Promise<RetryState> {
+  if (!(await isAdmin())) return { error: "Not signed in to the admin area." };
+  if (!hasDatabase()) return { error: "No database is configured." };
+
+  const eventId = String(form.get("eventId") ?? "");
+  const slug = String(form.get("slug") ?? "");
+
+  const company = await getDb().company.findUnique({
+    where: { slug },
+    select: { id: true, demoDay: true, seedJson: true, users: { select: { name: true, email: true } } },
+  });
+  if (!company) return { eventId, error: "No such company." };
+
+  const event = await getDb().caseEvent.findFirst({
+    where: { companyId: company.id, id: eventId, type: "case.raised" },
+    select: { id: true, targetId: true, payload: true },
+  });
+  if (!event) return { eventId, error: "That raise is no longer in the log." };
+
+  const result = await deliverRaisedNotice(
+    buildRaisedNotice({
+      slug,
+      eventId: event.id,
+      caseId: event.targetId ?? "",
+      payload: (event.payload ?? {}) as EventPayload,
+      seed: parseSeed(company.seedJson),
+      people: company.users,
+      day: company.demoDay,
+      baseUrl: companyBaseUrl(slug),
+    }),
+    8000, // A person is watching this one, so give n8n longer than the raise path does.
+  );
+
+  if (!result.ok) return { eventId, error: result.error };
+  revalidatePath("/admin", "layout");
+  return { eventId, ok: true };
+}
+
+// ── Database ─────────────────────────────────────────────────────────────────
+
+/**
+ * What Postgres says about itself. Never throws: if the read fails mid-flight the page shows the
+ * "not answering" state, which is the honest answer and the one the card exists for.
+ */
+export async function databaseReport(): Promise<DatabaseReport> {
+  const configured = Boolean(process.env.DATABASE_URL);
+  if (!(await isAdmin())) {
+    return describeDatabase({ configured, outage: databaseOutage(), facts: null });
+  }
+
+  // Down? Ask again now rather than wait for the background retry: the page polls while the
+  // database is off (DatabaseCard), so this is what turns "Postgres is back" into live data.
+  if (!hasDatabase()) await reconnectDatabase();
+
+  // orDemo, not a bare try/catch: a connection error here must also FLIP the mode flag, because
+  // that is what makes hasDatabase() false for the rest of this render and sends the page down
+  // the demo path instead of throwing a 500 at a reader who only wanted to know what was wrong.
+  const facts = hasDatabase()
+    ? await orDemo<DatabaseFacts | null>(() => databaseFacts(), () => null)
+    : null;
+  return describeDatabase({ configured, outage: databaseOutage(), facts });
+}
+
+// ── Managing a company ───────────────────────────────────────────────────────
+
+export type StageState = { slug?: string; stage?: string; error?: string };
+
+/**
+ * Move a company through demo -> sandbox -> pilot -> live (docs/INTEGRATIONS.md "Stages").
+ *
+ * It is a column, not a branch: nothing about the code changes, it is how we describe this
+ * customer to ourselves. Which is exactly why it belongs on the page where the customer was
+ * created, instead of in a psql session.
+ */
+export async function setCompanyStageAction(_prev: StageState, form: FormData): Promise<StageState> {
+  if (!(await isAdmin())) return { error: "Not signed in to the admin area." };
+  if (!hasDatabase()) return { error: "No database is configured." };
+
+  const slug = String(form.get("slug") ?? "");
+  const stage = String(form.get("stage") ?? "");
+  if (!isStage(stage)) return { slug, error: `"${stage}" is not one of ${STAGES.join(", ")}.` };
+
+  const { count } = await getDb().company.updateMany({ where: { slug }, data: { stage } });
+  if (count === 0) return { slug, error: "No such company." };
+
+  revalidatePath("/admin", "layout");
+  revalidatePath("/", "layout");
+  return { slug, stage };
 }
