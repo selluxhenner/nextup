@@ -10,9 +10,9 @@ export const metadata = { title: "Log in" };
 export default function FindCompanyPage() {
   return (
     <AuthShell
+      art="hand"
       side={
         <>
-          <p className="nh-eyebrow">Who owns this decision?</p>
           <h2>Nineteen working days.<br />Three of them are work.</h2>
           <p>Log in to see what is waiting on whom - and for how long. One home screen per role:</p>
           <AuthRoles items={[
@@ -23,7 +23,7 @@ export default function FindCompanyPage() {
         </>
       }
     >
-      <AuthTitle step="Step 1 of 2" title="Find your company" sub="Enter your work email or your company's NextUp name. We will take you to your company's login." />
+      <AuthTitle title="Find your company" sub="Enter your work email or your company's NextUp name. We will take you to your company's login." />
 
       <form className={styles.form} action="/acme/login" method="get" autoComplete="off">
         <Field id="email" label="Work email">
