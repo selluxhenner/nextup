@@ -1,6 +1,11 @@
 /* The layouts the skeletons echo. Dimensions follow the real views (ViewHead, ui.stats, the raise box,
    the dashboard list) closely enough that the page does not jump when the content lands. */
 .page { display: flex; flex-direction: column; gap: 14px; min-height: 40vh; }
+/* Delayed: hidden for 400ms, then fades in (fast loads never flash). Reduced motion keeps the delay, drops the fade. */
+.page[data-delay="true"], .raise[data-delay="true"] { animation: appear 0.25s ease 0.4s both; }
+@keyframes appear { from { opacity: 0; visibility: hidden; } to { opacity: 1; visibility: visible; } }
+@media (prefers-reduced-motion: reduce) { .page[data-delay="true"], .raise[data-delay="true"] { animation-duration: 0s; } }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 .head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 .headText { display: flex; flex-direction: column; gap: 9px; min-width: 0; }

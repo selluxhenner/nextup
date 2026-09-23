@@ -29,5 +29,5 @@ export function RoleRouter() {
     }
     router.replace(href(ROLE_HOME[next]));
   }, [ready, role, as, serverMode, seed.personas, tenant.slug, href, router]);
-  return <PageSkeleton kind={ROLE_HOME[role] === "/raise" ? "raise" : "list"} />;
+  return <PageSkeleton kind={ROLE_HOME[role] === "/raise" ? "raise" : "list"} delay />;
 }

@@ -13,7 +13,7 @@ import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 export function ProgressView() {
   const ctx = useDemo();
   const { seed, D, N, demo, persona, ready } = ctx;
-  if (!ready) return <PageSkeleton kind="list" />;
+  if (!ready) return <PageSkeleton kind="list" delay />;
   const M = seed.metrics, P = seed.promiseDays, O = seed.outcomeDays;
   const steps = funnel(N);
   const stuck = stalled(D);

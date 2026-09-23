@@ -25,7 +25,7 @@ export function IdeasView({ initialId }: { initialId?: string }) {
   const [iid, setIid] = useState<string | null>(initialId ?? null);
   const [sort, setSort] = useState<IdeaSort>("score");
   const [status, setStatus] = useState("All");
-  if (!ready) return <PageSkeleton kind="list" />;
+  if (!ready) return <PageSkeleton kind="list" delay />;
 
   const isEmployee = role === "member";
   const toks = tokens(q), hasQuery = toks.length > 0;

@@ -21,7 +21,7 @@ const STATUS_LABEL: Partial<Record<MineStatus, string>> = {
 export function SentView() {
   const ctx = useDemo();
   const { seed, ready, href, openSheet } = ctx;
-  if (!ready) return <PageSkeleton kind="list" />;
+  if (!ready) return <PageSkeleton kind="list" delay />;
 
   const P = seed.promiseDays;
   const mine = mineRows(ctx);

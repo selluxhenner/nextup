@@ -29,6 +29,97 @@
 .foot { margin-top: 10px; font-size: 13px; color: var(--nh-mute); text-align: center; }
 .foot a { color: var(--nh-ink); font-weight: 600; }
 
+/* Editorial login treatment: one white object floating on the existing Ground. */
+.artShell {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: 64px minmax(0, 1fr);
+}
+
+.authPanel {
+  min-height: calc(100dvh - 124px);
+  margin: 20px clamp(20px, 3vw, 40px) 40px 0;
+  display: grid;
+  grid-template-columns: minmax(0, 58%) minmax(420px, 42%);
+  align-items: stretch;
+}
+
+.artMain {
+  position: relative;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  padding: clamp(28px, 4vw, 56px);
+  background: #fff;
+  border: 1px solid #e7edf1;
+  border-radius: 28px;
+  box-shadow: 0 26px 56px -20px rgb(25 50 70 / 0.22), 0 6px 14px rgb(25 50 70 / 0.06);
+}
+
+.artCard {
+  width: min(420px, 100%);
+  margin: auto;
+  padding: clamp(12px, 2vh, 24px) 0;
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.art {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+}
+
+.art::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background:
+    radial-gradient(ellipse 70% 70% at 28% 52%, rgb(235 246 255 / 0.82), transparent 100%);
+}
+
+.hand {
+  object-fit: contain;
+  object-position: center left;
+  opacity: 0.28;
+  filter: contrast(0.82);
+  transform: scaleX(-1);
+}
+
+.artContent {
+  position: relative;
+  z-index: 2;
+  width: min(400px, 52%);
+  margin: 0;
+  padding-left: clamp(30px, 4vw, 64px);
+  color: var(--nh-ink);
+}
+
+.artContent h2 {
+  font-size: clamp(27px, 2.1vw, 30px);
+  line-height: 1.03;
+  letter-spacing: -0.035em;
+}
+
+.artContent p:not(:global(.nh-eyebrow)) { color: var(--nh-ink-2); }
+.artContent .roles li { border-color: rgb(20 20 20 / 0.1); }
+.artContent .roles li :global(.nh-eyebrow) { color: var(--nh-mute); }
+.artContent .roles strong { color: var(--nh-ink); }
+.artContent .roles small { color: var(--nh-ink-2); }
+
+@media (min-width: 861px) and (max-height: 640px) {
+  .artMain { padding: 18px clamp(24px, 4vw, 48px); }
+  .artCard { padding: 0; }
+  .artCard form { gap: 12px; margin-top: 2px; }
+  .artCard .title { font-size: 26px; }
+  .artCard .sub { margin-bottom: 4px; font-size: 13px; }
+}
+
 @media (max-width: 860px) {
   .shell { grid-template-columns: 1fr; }
   .side { padding: 20px var(--nh-page-x); gap: 18px; }
@@ -37,4 +128,16 @@
   .stats, .roles, .sideFoot { display: none; }
   .main { padding: 24px var(--nh-page-x) 40px; align-items: start; }
   .card { padding: 24px; }
+
+  .authPanel { min-height: calc(100dvh - 96px); margin: 16px; grid-template-columns: 1fr; }
+  .artMain { min-height: calc(100dvh - 96px); padding: 24px var(--nh-page-x); border-radius: 24px; }
+  .artCard { margin: auto; padding: 32px 0; }
+  .art { display: none; }
+}
+
+@media (max-width: 480px) {
+  .authPanel { margin: 10px; }
+  .authPanel, .artMain { min-height: calc(100dvh - 84px); }
+  .artMain { padding: 20px 22px; }
+  .artCard { padding: 28px 0; }
 }

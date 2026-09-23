@@ -45,7 +45,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
   const [why, setWhy] = useState(""); // the reason behind "affects my team too" / the new information behind a re-evaluation
   const [asking, setAsking] = useState(false); // the why field is open
   const [big, setBig] = useState<number | null>(null); // index of the screenshot shown full size
-  if (!ready) return <PageSkeleton kind="detail" />;
+  if (!ready) return <PageSkeleton kind="detail" delay />;
   const c = S.cases.find((x) => x.id === caseId);
   // Someone else's case reads exactly like a missing one - the title is not leaked either way.
   if (!c || !canOpen(ctx, c)) {

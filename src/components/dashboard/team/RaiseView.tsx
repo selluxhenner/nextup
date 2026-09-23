@@ -9,6 +9,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
+import { EvalOrb } from "@/components/dashboard/team/EvalOrb";
 import { SITE } from "@/config/site";
 import type { CaseKind } from "@/features/cases/events";
 import { evaluate, type Evaluation } from "@/features/evaluate";
@@ -23,7 +24,9 @@ const KINDS: { id: CaseKind; label: string; placeholder: string }[] = [
 const STEP_MS = 1100; // one step per ~1.1 s -> about 9 s for eight steps
 const MAX_SHOTS = 4;
 const MIN_CHARS = 8;
+const PICK_PAGE = 5; // rows per page in the affected picker; longer lists page instead of scrolling
 const PROMPTS = ["Impact", "Who's blocked", "Already tried", "Deadline"];
+const ORB_PX = 96;
 const HOW: { id: "raise" | "context" | "score" | "track"; title: string; text: string }[] = [
   { id: "raise", title: "Raise it", text: "Anyone, from any team, submits an idea or a problem in one line." },
   { id: "context", title: "It reads the context", text: SITE.name + " maps it against your org structure, business model, and goals." },
@@ -32,7 +35,7 @@ const HOW: { id: "raise" | "context" | "score" | "track"; title: string; text: s
 ];
 
 type Phase = { at: "edit" } | { at: "thinking"; ev: Evaluation; done: number } | { at: "done"; ev: Evaluation; id: string };
-type Pick = { id: string; label: string; meta: string };
+type Pick = { id: string; label: string; meta: string; dept?: string }; // dept: a department row, expandable to its people
 
 export function RaiseView() {
   const ctx = useDemo();
@@ -45,17 +48,26 @@ export function RaiseView() {
   const [affected, setAffected] = useState<string[]>([]);
   const [pickOpen, setPickOpen] = useState(false);
   const [pickQuery, setPickQuery] = useState("");
+  const [pickPages, setPickPages] = useState<Record<string, number>>({}); // page per group, keyed by group label or dept id
+  const [openDept, setOpenDept] = useState<string | null>(null); // department row expanded to its people
   const [reading, setReading] = useState(0); // files still being shrunk
   const [phase, setPhase] = useState<Phase>({ at: "edit" });
+  const [reduced, setReduced] = useState(false); // prefers-reduced-motion: the steps land fast and the orb holds still
   const fileRef = useRef<HTMLInputElement>(null);
   const pickRef = useRef<HTMLDivElement>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const sync = () => setReduced(mq.matches);
+    sync(); mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
 
   // The evaluation plays out one step at a time; the case is raised once the last step lands.
   useEffect(() => {
     if (phase.at !== "thinking") return;
     const { ev, done } = phase;
-    const reduced = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     timer.current = setTimeout(() => {
       if (done < ev.steps.length) setPhase({ at: "thinking", ev, done: done + 1 });
       else {
@@ -65,7 +77,7 @@ export function RaiseView() {
       }
     }, reduced ? 150 : STEP_MS);
     return () => { if (timer.current) clearTimeout(timer.current); };
-  }, [phase, act, shots, tenant.slug, showToast]); // shots cannot change while thinking: the box is locked
+  }, [phase, act, shots, tenant.slug, showToast, reduced]); // shots cannot change while thinking: the box is locked
 
   // The affected picker closes on a click outside it or on Escape.
   useEffect(() => {
@@ -76,7 +88,7 @@ export function RaiseView() {
     return () => { document.removeEventListener("mousedown", onDown); document.removeEventListener("keydown", onKey); };
   }, [pickOpen]);
 
-  if (!ready) return <PageSkeleton kind="raise" />;
+  if (!ready) return <PageSkeleton kind="raise" delay />;
 
   const who = persona.who;
   const current = KINDS.find((k) => k.id === kind) ?? KINDS[0];
@@ -91,8 +103,16 @@ export function RaiseView() {
   const hit = (p: Pick) => !q || p.label.toLowerCase().includes(q) || p.meta.toLowerCase().includes(q);
   const groups: { label: string; items: Pick[] }[] = [
     { label: "People", items: seed.people.filter((p) => p.name !== who.name).map((p) => ({ id: p.name, label: p.name, meta: p.role + " · " + p.dept })).filter(hit) },
-    { label: "Departments", items: seed.depts.map((d) => ({ id: d.name, label: d.name, meta: d.people + " people" })).filter(hit) },
+    { label: "Departments", items: seed.depts.map((d) => ({ id: d.name, label: d.name, meta: d.people + " people", dept: d.id })).filter(hit) },
   ].filter((g) => g.items.length > 0);
+  const inDept = (id: string): Pick[] => seed.people.filter((p) => p.dept === id && p.name !== who.name).map((p) => ({ id: p.name, label: p.name, meta: p.role }));
+  // Lists longer than a page are paged, not scrolled; the page is clamped so a narrower search never lands on an empty page.
+  const pageOf = <T,>(key: string, items: T[]) => {
+    const pages = Math.max(1, Math.ceil(items.length / PICK_PAGE));
+    const page = Math.min(pickPages[key] ?? 0, pages - 1);
+    return { page, pages, rows: items.slice(page * PICK_PAGE, (page + 1) * PICK_PAGE) };
+  };
+  const turnPage = (key: string, to: number) => setPickPages((p) => ({ ...p, [key]: to }));
 
   // Picked files are shrunk to small data URLs right away, so the preview and what gets stored are the same bytes.
   const addShots = (files: FileList | null) => {
@@ -114,8 +134,25 @@ export function RaiseView() {
     setPhase({ at: "thinking", ev, done: 0 });
   };
   const reset = () => {
-    setDraft(""); setContext(""); setShots([]); setAffected([]); setPickQuery(""); setPickOpen(false); setPhase({ at: "edit" });
+    setDraft(""); setContext(""); setShots([]); setAffected([]); setPickQuery(""); setPickPages({}); setOpenDept(null); setPickOpen(false); setPhase({ at: "edit" });
   };
+
+  const pickRow = (it: Pick) => {
+    const on = affected.includes(it.id);
+    return (
+      <button key={it.id} type="button" className={styles.pickRow} onClick={() => toggleAffected(it.id)} aria-pressed={on}>
+        <span className={styles.pickMark} data-on={on ? "true" : undefined} aria-hidden="true">{on ? "✓" : ""}</span>
+        <span className={styles.pickText}><span className={styles.pickLabel}>{it.label}</span><span className={styles.pickMeta}>{it.meta}</span></span>
+      </button>
+    );
+  };
+  const pager = (key: string, page: number, pages: number) => pages > 1 && (
+    <div className={styles.pickPager}>
+      <button type="button" className={styles.pickPage} onClick={() => turnPage(key, page - 1)} disabled={page === 0} aria-label="Previous page">‹</button>
+      <span className={styles.pickPageN}>{page + 1} / {pages}</span>
+      <button type="button" className={styles.pickPage} onClick={() => turnPage(key, page + 1)} disabled={page >= pages - 1} aria-label="Next page">›</button>
+    </div>
+  );
 
   const chips: { key: string; label: string; thumb?: string; remove: () => void }[] = [
     ...affected.map((n) => ({ key: "a:" + n, label: n, remove: () => toggleAffected(n) })),
@@ -174,23 +211,43 @@ export function RaiseView() {
                   {pickOpen && (
                     <div className={styles.picker} role="dialog" aria-label="Who else is affected">
                       <div className={styles.pickSearch}>
-                        <input value={pickQuery} onChange={(e) => setPickQuery(e.target.value)} placeholder="Search people, departments" aria-label="Search people and departments" autoFocus />
+                        <input value={pickQuery} onChange={(e) => { setPickQuery(e.target.value); setPickPages({}); }} placeholder="Search people, departments" aria-label="Search people and departments" autoFocus />
                       </div>
                       <div className={styles.pickList}>
-                        {groups.map((g) => (
-                          <div key={g.label}>
-                            <span className={styles.pickGroup}>{g.label}</span>
-                            {g.items.map((it) => {
-                              const on = affected.includes(it.id);
-                              return (
-                                <button key={it.id} type="button" className={styles.pickRow} onClick={() => toggleAffected(it.id)} aria-pressed={on}>
-                                  <span className={styles.pickMark} data-on={on ? "true" : undefined} aria-hidden="true">{on ? "✓" : ""}</span>
-                                  <span className={styles.pickText}><span className={styles.pickLabel}>{it.label}</span><span className={styles.pickMeta}>{it.meta}</span></span>
-                                </button>
-                              );
-                            })}
-                          </div>
-                        ))}
+                        {groups.map((g) => {
+                          const { page, pages, rows } = pageOf(g.label, g.items);
+                          return (
+                            <div key={g.label}>
+                              <span className={styles.pickGroup}>{g.label}</span>
+                              {rows.map((it) => {
+                                if (!it.dept) return pickRow(it);
+                                // A department row: the checkbox picks the whole department, the small button opens its people.
+                                const open = openDept === it.dept, members = inDept(it.dept), picked = members.filter((m) => affected.includes(m.id)).length;
+                                const sub = pageOf("dept:" + it.dept, members);
+                                return (
+                                  <div key={it.id} className={styles.pickDept} data-open={open ? "true" : undefined}>
+                                    <div className={styles.pickDeptRow}>
+                                      {pickRow(it)}
+                                      {members.length > 0 && (
+                                        <button type="button" className={styles.pickSub} onClick={() => setOpenDept(open ? null : it.dept ?? null)} aria-expanded={open} aria-label={(open ? "Hide" : "Pick") + " people in " + it.label} title={open ? "Hide people" : "Pick people in " + it.label}>
+                                          <span className={styles.pickSubN}>{(picked ? picked + "/" : "") + members.length}</span>
+                                          <span className={styles.pickSubChev} aria-hidden="true">›</span>
+                                        </button>
+                                      )}
+                                    </div>
+                                    {open && (
+                                      <div className={styles.pickNest}>
+                                        {sub.rows.map(pickRow)}
+                                        {pager("dept:" + it.dept, sub.page, sub.pages)}
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                              {pager(g.label, page, pages)}
+                            </div>
+                          );
+                        })}
                         {groups.length === 0 && <div className={styles.pickEmpty}>No matches</div>}
                       </div>
                       <div className={styles.pickFoot}>
@@ -219,82 +276,86 @@ export function RaiseView() {
         </div>
       </div>
 
+      {/* One card, three states stacked in the same cell: "How it works" is always laid out (hidden when not
+          current) so the card keeps its size while typing and while evaluating. */}
       <div className={styles.card}>
-        {phase.at === "edit" && !composing && (
-          <>
-            <div className={styles.cardHead}>
-              <h2 className={styles.cardTitle}>How {SITE.name} works</h2>
-              <span className={styles.cardTag}>Raised → routed → tracked</span>
-            </div>
-            <div className={styles.how}>
-              {HOW.map((s) => (
-                <section key={s.id} className={styles.step}>
-                  {/* Decorative sketches of each stage, as in the mockup - no data behind them. */}
-                  <div className={styles.mini} aria-hidden="true">
-                    {s.id === "raise" && <><span className={styles.miniRow}><span className={styles.miniBulb} /><span className={styles.miniBar} /></span><span className={styles.miniTags}><span>Idea</span><span>Problem</span></span></>}
-                    {s.id === "context" && ["Org", "Model", "Goals"].map((l, j) => <span key={l} className={styles.miniRow}><span className={styles.miniL}>{l}</span><span className={styles.miniTrack}><span className={styles.miniFill} style={{ width: ["82%", "64%", "91%"][j] }} /></span></span>)}
-                    {s.id === "score" && ([["Fit", 4], ["Urgency", 3], ["Impact", 5]] as const).map(([l, n]) => <span key={l} className={styles.miniRow}><span className={styles.miniL}>{l}</span><span className={styles.miniDots}>{[0, 1, 2, 3, 4].map((d) => <span key={d} data-on={d < n ? "true" : undefined} />)}</span></span>)}
-                    {s.id === "track" && <><span className={styles.miniRow}><span className={styles.miniFaces}><span>AK</span><span>JS</span><span>MR</span></span><span className={styles.miniFlight}>In flight</span></span><span className={styles.miniTrack}><span className={styles.miniFill} style={{ width: "58%" }} /></span></>}
-                  </div>
-                  <h3 className={styles.stepTitle}>{s.title}</h3>
-                  <p className={styles.stepText}>{s.text}</p>
-                </section>
-              ))}
-            </div>
-          </>
-        )}
-
-        {phase.at === "edit" && composing && (
-          <>
-            <div className={styles.cardHead}>
-              <h2 className={styles.cardTitle}>Add context</h2>
-              <span className={styles.cardTag}>{words ? words + (words === 1 ? " word" : " words") : "Optional"}</span>
-            </div>
-            <div className={styles.ctx}>
-              <textarea className={styles.ctxField} value={context} onChange={(e) => setContext(e.target.value)} rows={6} aria-label="Context"
-                placeholder={"What's happening, who does it affect, what have you already tried? The more context, the better " + SITE.name + " can route it."} />
-              <div className={styles.prompts}>
-                <span className={styles.promptsL}>Prompts</span>
-                {PROMPTS.map((p) => <button key={p} type="button" className={styles.prompt} onClick={() => addPrompt(p)}>{p}</button>)}
-              </div>
-            </div>
-          </>
-        )}
-
-        {(phase.at === "thinking" || phase.at === "done") && (() => {
-          const ev = phase.ev, done = phase.at === "done" ? ev.steps.length + 1 : phase.done;
+        {(() => {
+          const showHow = phase.at === "edit" && !composing, showCtx = phase.at === "edit" && composing, showEval = phase.at !== "edit";
+          const state = (on: boolean) => ({ className: styles.state, "data-on": on ? "true" : undefined, inert: !on, "aria-hidden": !on });
           return (
             <>
-              <div className={styles.cardHead}>
-                <h2 className={styles.cardTitle}><span className={styles.orb} data-live={phase.at === "thinking" ? "true" : undefined} aria-hidden="true" />{phase.at === "thinking" ? SITE.name + " is evaluating" : "Evaluated"}</h2>
-                <span className={styles.cardTag}>{phase.at === "thinking" ? Math.min(done, ev.steps.length) + " / " + ev.steps.length : "Score " + ev.score.value}</span>
-              </div>
-              <ol className={styles.evalSteps} aria-live="polite">
-                {ev.steps.map((s, i) => {
-                  const state = i < done ? "done" : i === done ? "now" : "todo";
-                  return (
-                    <li key={s.id} className={styles.evalStep} data-state={state}>
-                      <span className={styles.mark} aria-hidden="true">{state === "done" ? "✓" : ""}</span>
-                      <span className={styles.evalText}>
-                        <span className={styles.evalTitle}>{s.title}</span>
-                        {state === "done" && <span className={styles.evalDetail}>{s.detail}</span>}
-                      </span>
-                    </li>
-                  );
-                })}
-              </ol>
-              {phase.at === "done" && (
-                <div className={styles.banner} role="status">
-                  <p className={styles.bannerSub}>
-                    On <strong>{ev.lead}</strong>’s desk{ev.passesTo ? <>, passed to <strong>{ev.passesTo}</strong> if it is theirs</> : null}. Answer owed in {seed.promiseDays} d — it stays on the dashboard until then.
-                  </p>
-                  <div className={styles.bannerRow}>
-                    <Link href={href("/dashboard")} className="nh-btn nh-btn-primary nh-btn-sm">See it on the dashboard</Link>
-                    <Link href={href("/cases/" + phase.id)} className="nh-btn nh-btn-ghost nh-btn-sm">Open the case</Link>
-                    <button type="button" className={styles.again} onClick={reset}>Raise another</button>
+              <section {...state(showHow)}>
+                <div className={styles.cardHead}>
+                  <h2 className={styles.cardTitle}>How {SITE.name} works</h2>
+                  <span className={styles.cardTag}>Raised → routed → tracked</span>
+                </div>
+                <div className={styles.how}>
+                  {HOW.map((s) => (
+                    <section key={s.id} className={styles.step}>
+                      {/* Decorative sketches of each stage, as in the mockup - no data behind them. */}
+                      <div className={styles.mini} aria-hidden="true">
+                        {s.id === "raise" && <><span className={styles.miniRow}><span className={styles.miniBulb} /><span className={styles.miniBar} /></span><span className={styles.miniTags}><span>Idea</span><span>Problem</span></span></>}
+                        {s.id === "context" && ["Org", "Model", "Goals"].map((l, j) => <span key={l} className={styles.miniRow}><span className={styles.miniL}>{l}</span><span className={styles.miniTrack}><span className={styles.miniFill} style={{ width: ["82%", "64%", "91%"][j] }} /></span></span>)}
+                        {s.id === "score" && ([["Fit", 4], ["Urgency", 3], ["Impact", 5]] as const).map(([l, n]) => <span key={l} className={styles.miniRow}><span className={styles.miniL}>{l}</span><span className={styles.miniDots}>{[0, 1, 2, 3, 4].map((d) => <span key={d} data-on={d < n ? "true" : undefined} />)}</span></span>)}
+                        {s.id === "track" && <><span className={styles.miniRow}><span className={styles.miniFaces}><span>AK</span><span>JS</span><span>MR</span></span><span className={styles.miniFlight}>In flight</span></span><span className={styles.miniTrack}><span className={styles.miniFill} style={{ width: "58%" }} /></span></>}
+                      </div>
+                      <h3 className={styles.stepTitle}>{s.title}</h3>
+                      <p className={styles.stepText}>{s.text}</p>
+                    </section>
+                  ))}
+                </div>
+              </section>
+
+              <section {...state(showCtx)}>
+                <div className={styles.cardHead}>
+                  <h2 className={styles.cardTitle}>Add context</h2>
+                  <span className={styles.cardTag}>{words ? words + (words === 1 ? " word" : " words") : "Optional"}</span>
+                </div>
+                <div className={styles.ctx}>
+                  <textarea className={styles.ctxField} value={context} onChange={(e) => setContext(e.target.value)} rows={3} aria-label="Context"
+                    placeholder={"What's happening, who does it affect, what have you already tried? The more context, the better " + SITE.name + " can route it."} />
+                  <div className={styles.prompts}>
+                    <span className={styles.promptsL}>Prompts</span>
+                    {PROMPTS.map((p) => <button key={p} type="button" className={styles.prompt} onClick={() => addPrompt(p)}>{p}</button>)}
                   </div>
                 </div>
-              )}
+              </section>
+
+              {/* Evaluating: the orb, the word, and the one step it is on right now; then the receipt. */}
+              <section {...state(showEval)}>
+                {phase.at !== "edit" && (() => {
+                  const ev = phase.ev, at = phase.at === "thinking" ? Math.min(phase.done, ev.steps.length - 1) : -1;
+                  const thinking = at >= 0, now = thinking ? ev.steps[at] : null;
+                  return (
+                    <div className={styles.evalCenter}>
+                      <span className={styles.orb} aria-hidden="true"><EvalOrb state="connecting" size={ORB_PX} paused={!thinking || reduced} /></span>
+                      <h2 className={styles.evalHead}>{thinking ? "Evaluating" : "Evaluated"}</h2>
+                      <p className={styles.evalNow} aria-live="polite">
+                        {now ? <>{now.title}<span className={styles.evalN}>{at + 1} / {ev.steps.length}</span></> : <>Score {ev.score.value}<span className={styles.evalN}>{ev.steps.length} checks</span></>}
+                      </p>
+                      {/* While thinking: what the last landed step found, and the eight steps as a track. Once raised the receipt takes their place. */}
+                      {thinking && at > 0 && <p key={ev.steps[at - 1].id} className={styles.evalDetail}>{ev.steps[at - 1].detail}</p>}
+                      {thinking && (
+                        <ol className={styles.evalTrack} aria-label="Evaluation steps">
+                          {ev.steps.map((s, i) => <li key={s.id} className={styles.evalSeg} data-state={i < at ? "done" : i === at ? "now" : "todo"} title={s.title} />)}
+                        </ol>
+                      )}
+                      {phase.at === "done" && (
+                        <div className={styles.receipt} role="status">
+                          <p className={styles.receiptText}>
+                            On <strong>{ev.lead}</strong>’s desk{ev.passesTo ? <>, passed to <strong>{ev.passesTo}</strong> if it is theirs</> : null}. Answer owed in {seed.promiseDays} d — it stays on the dashboard until then.
+                          </p>
+                          <div className={styles.receiptRow}>
+                            <Link href={href("/dashboard")} className={styles.receiptGo}>See it on the dashboard</Link>
+                            <Link href={href("/cases/" + phase.id)} className={styles.receiptOpen}>Open the case</Link>
+                            <button type="button" className={styles.again} onClick={reset}>Raise another</button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+              </section>
             </>
           );
         })()}

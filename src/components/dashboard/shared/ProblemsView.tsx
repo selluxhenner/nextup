@@ -27,7 +27,7 @@ export function ProblemsView({ initialId }: { initialId?: string }) {
   const [sort, setSort] = useState<ProblemSort>("people");
   const [trend, setTrend] = useState("All");
   const [owner, setOwner] = useState("All");
-  if (!ready) return <PageSkeleton kind="list" />;
+  if (!ready) return <PageSkeleton kind="list" delay />;
 
   const toks = tokens(q), hasQuery = toks.length > 0;
   const scope = scopedProblems(ctx);

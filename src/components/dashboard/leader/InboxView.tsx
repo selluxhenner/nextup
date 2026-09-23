@@ -18,7 +18,7 @@ export function InboxView({ initialId }: { initialId?: string }) {
   const { seed, D, demo, persona, act, openSheet, showToast, ready, f, href } = ctx;
   // Selection: the page remounts this view (key = ?id) when a search result or link picks a case.
   const [cid, setCid] = useState<string | null>(initialId ?? null);
-  if (!ready) return <PageSkeleton kind="inbox" />;
+  if (!ready) return <PageSkeleton kind="inbox" delay />;
 
   const who = persona.who, P = seed.promiseDays;
   const desk = deskCases(ctx), open = openCases(ctx);

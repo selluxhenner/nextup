@@ -15,7 +15,7 @@ import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 export function OverviewView() {
   const ctx = useDemo();
   const { seed, S, D, N, log, demo, href, deptName, ready } = ctx;
-  if (!ready) return <PageSkeleton kind="overview" />;
+  if (!ready) return <PageSkeleton kind="overview" delay />;
   const P = seed.promiseDays, M = seed.metrics, L = seed.ledger;
   const dash = (v: string) => (demo ? v : "—");
   const was = (str: string) => parseInt(String(str).replace(/[^\d]/g, ""), 10);

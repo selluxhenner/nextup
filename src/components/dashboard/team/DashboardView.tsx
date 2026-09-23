@@ -4,7 +4,7 @@
 // dashboardRow(); nothing is stored. Who sees what (derive.visibleTo): an employee only what they
 // raised; a team leader their own and their people's; a manager everything.
 import Link from "next/link";
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { visibleTo } from "@/components/dashboard/derive";
 import { Avatar, Pill, statusTone } from "@/components/dashboard/shared/primitives";
@@ -29,7 +29,23 @@ export function DashboardView() {
   const { seed, D, log, persona, role, ready, href } = ctx;
   const [filter, setFilter] = useState<Filter>("all");
   const [sort, setSort] = useState<Sort>("score");
-  if (!ready) return <PageSkeleton kind="dashboard" />;
+  // The ink thumb slides under the current filter: measured from the pressed chip, re-measured on resize.
+  const chipsRef = useRef<HTMLDivElement>(null);
+  const [thumb, setThumb] = useState<{ x: number; w: number } | null>(null);
+  useLayoutEffect(() => {
+    const chips = chipsRef.current;
+    if (!chips) return;
+    const measure = () => {
+      const on = chips.querySelector<HTMLElement>('[aria-pressed="true"]');
+      setThumb(on ? { x: on.offsetLeft, w: on.offsetWidth } : null);
+    };
+    measure();
+    const ro = new ResizeObserver(measure); ro.observe(chips);
+    chips.querySelectorAll<HTMLElement>("button").forEach((b) => ro.observe(b));
+    window.addEventListener("resize", measure);
+    return () => { ro.disconnect(); window.removeEventListener("resize", measure); };
+  }, [filter, role]);
+  if (!ready) return <PageSkeleton kind="dashboard" delay />;
 
   const who = persona.who;
   const rows = D.cases.filter((c) => visibleTo(ctx, c)).map((c) => dashboardRow(c, seed.promiseDays, who, log));
@@ -56,7 +72,8 @@ export function DashboardView() {
           <p className={styles.sub}>{role === "member" ? "What you raised · " : role === "leader" ? "Your own and your people’s · " : ""}{open} open · {late ? late + " past the " + seed.promiseDays + "-day promise" : "all inside the " + seed.promiseDays + "-day promise"}</p>
         </div>
         <div className={styles.tools}>
-          <div className={styles.chips} role="group" aria-label="Show">
+          <div ref={chipsRef} className={styles.chips} role="group" aria-label="Show">
+            {thumb && <span className={styles.chipThumb} style={{ transform: "translateX(" + thumb.x + "px)", width: thumb.w }} aria-hidden="true" />}
             {filters.map((f) => (
               <button key={f.id} type="button" className={styles.chip} aria-pressed={filter === f.id} onClick={() => setFilter(f.id)}>
                 {f.label}<span className={styles.chipN}>{counts[f.id]}</span>

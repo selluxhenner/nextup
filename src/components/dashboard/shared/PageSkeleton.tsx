@@ -33,7 +33,10 @@ export function skeletonKindForPathname(pathname: string): SkeletonKind {
   return skeletonKindFor("/" + app.join("/"));
 }
 
-export function PageSkeleton({ kind = "list" }: { kind?: SkeletonKind }) {
+// `delay`: stay invisible for the first 400ms, so a fast device never sees the skeleton flash.
+// The views pass it (they wait for hydration); loading.tsx does not - on navigation the old page
+// is already gone, so a delayed skeleton would only mean a blank. CSS-only, so it runs pre-hydration.
+export function PageSkeleton({ kind = "list", delay = false }: { kind?: SkeletonKind; delay?: boolean }) {
   const body =
     kind === "overview" ? <Overview /> :
     kind === "inbox" ? <Inbox /> :
@@ -43,7 +46,8 @@ export function PageSkeleton({ kind = "list" }: { kind?: SkeletonKind }) {
     kind === "settings" ? <Settings /> :
     <List />;
   return (
-    <div className={kind === "raise" ? styles.raise : styles.page} role="status" aria-busy="true" aria-label="Loading">
+    <div className={kind === "raise" ? styles.raise : styles.page} data-delay={delay || undefined} role="status" aria-busy="true" aria-live="polite">
+      <span className={styles.sr}>Loading…</span>
       {body}
     </div>
   );
