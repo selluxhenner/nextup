@@ -119,18 +119,18 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.NEXTUP_BASE }}/api/{{ $json.slug }}/events",
+        "url": "={{ $env.NEXTUP_BASE }}/api/{{ $('Compose the message').item.json.slug }}/events",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Idempotency-Key", "value": "=notify:{{ $json.eventId }}" }
+            { "name": "Idempotency-Key", "value": "=notify:{{ $('Compose the message').item.json.eventId }}" }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"type\": \"case.commented\",\n  \"target\": \"{{ $json.caseId }}\",\n  \"payload\": { \"text\": \"Route owner notified by email.\" }\n}",
+        "jsonBody": "={\n  \"type\": \"case.commented\",\n  \"target\": \"{{ $('Compose the message').item.json.caseId }}\",\n  \"payload\": { \"text\": \"Route owner notified by email.\" }\n}",
         "options": {}
       },
       "id": "a1000000-0000-4000-8000-000000000005",

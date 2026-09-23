@@ -32,7 +32,7 @@ const isObject = (v: unknown): v is Record<string, unknown> => typeof v === "obj
  * The one legitimate way to touch a tenant table without naming a company: a lookup by a column
  * that is globally unique, where the lookup is what DETERMINES the tenant.
  *
- * ApiToken.hash is the only case. A bearer token is the caller's whole identity - you cannot
+ * ApiToken.hash and User.loginCodeHash are the cases. A bearer token is the caller's whole identity - you cannot
  * scope the lookup by company, because which company it belongs to is exactly what you are
  * trying to find out. It is safe because the column is unique across the whole table, so the
  * query returns one row or none; the caller then compares that row's company to the one in the
@@ -40,9 +40,14 @@ const isObject = (v: unknown): v is Record<string, unknown> => typeof v === "obj
  * company B's token is a 403, and that is a test").
  *
  * Every other ApiToken query - listing, revoking, marking used - stays scoped.
+ *
+ * A personal login code is the same thing for a person (src/features/auth/login-code.ts): the
+ * login finds the User from the code alone, then compares that user's company to the one in the
+ * URL and treats a mismatch as a wrong code.
  */
 export const IDENTIFYING_LOOKUPS: Record<string, readonly string[]> = {
   ApiToken: ["hash"],
+  User: ["loginCodeHash"],
 };
 
 /** Operations allowed to use an identifying lookup: reads of a single row, nothing else. */

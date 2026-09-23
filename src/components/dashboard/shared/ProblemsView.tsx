@@ -5,7 +5,6 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useDemo } from "@/components/dashboard/DemoProvider";
-import { PageSkeleton } from "@/components/ui/Skeleton";
 import { scopedProblems, sortProblems, type ProblemSort } from "@/components/dashboard/derive";
 import { Bars, Empty, Pill, Quote, Tile, ownerTone, statusTone, trendTone } from "@/components/dashboard/shared/primitives";
 import { FilterStrip, ListTools, ViewHead, type Chip } from "@/components/dashboard/shared/ViewHead";
@@ -13,6 +12,7 @@ import { hits, ownerLabel, problemHay, tokens } from "@/features/search";
 import { fmt } from "@/lib/utils/format";
 import ui from "@/components/dashboard/shared/ui.module.css";
 import styles from "./ProblemsView.module.css";
+import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 
 const SORTS: { id: ProblemSort; label: string }[] = [
   { id: "people", label: "Most people affected" }, { id: "trend", label: "Getting worse fastest" }, { id: "age", label: "Longest open" }, { id: "title", label: "A → Z" },
@@ -27,7 +27,7 @@ export function ProblemsView({ initialId }: { initialId?: string }) {
   const [sort, setSort] = useState<ProblemSort>("people");
   const [trend, setTrend] = useState("All");
   const [owner, setOwner] = useState("All");
-  if (!ready) return <PageSkeleton />;
+  if (!ready) return <PageSkeleton kind="list" delay />;
 
   const toks = tokens(q), hasQuery = toks.length > 0;
   const scope = scopedProblems(ctx);

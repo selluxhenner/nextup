@@ -5,7 +5,6 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useDemo } from "@/components/dashboard/DemoProvider";
-import { PageSkeleton } from "@/components/ui/Skeleton";
 import { criteriaTags, problemOf, scopedIdeas, sortIdeas, type IdeaSort } from "@/components/dashboard/derive";
 import { Avatar, Btn, Empty, Pill, Tile, statusTone } from "@/components/dashboard/shared/primitives";
 import { FilterStrip, ListTools, ViewHead, type Chip } from "@/components/dashboard/shared/ViewHead";
@@ -13,6 +12,7 @@ import type { IdeaStatus } from "@/features/demo/types";
 import { hits, ideaHay, tokens } from "@/features/search";
 import ui from "@/components/dashboard/shared/ui.module.css";
 import styles from "./IdeasView.module.css";
+import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 
 const SORTS: { id: IdeaSort; label: string }[] = [
   { id: "score", label: "Most criteria met" }, { id: "wait", label: "Longest waiting" }, { id: "upside", label: "Biggest upside" }, { id: "title", label: "A → Z" },
@@ -25,7 +25,7 @@ export function IdeasView({ initialId }: { initialId?: string }) {
   const [iid, setIid] = useState<string | null>(initialId ?? null);
   const [sort, setSort] = useState<IdeaSort>("score");
   const [status, setStatus] = useState("All");
-  if (!ready) return <PageSkeleton />;
+  if (!ready) return <PageSkeleton kind="list" delay />;
 
   const isEmployee = role === "member";
   const toks = tokens(q), hasQuery = toks.length > 0;

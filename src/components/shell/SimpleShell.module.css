@@ -6,7 +6,7 @@
   height: 60px; padding: 0 var(--nh-page-x); background: rgb(255 255 255 / 0.62); backdrop-filter: saturate(180%) blur(12px); border-bottom: 1px solid rgb(0 0 0 / 0.06);
 }
 .brand { display: flex; align-items: center; min-width: 0; justify-self: start; margin-left: calc(16px - var(--nh-page-x)); } /* the wordmark sits in the corner, 16px in, while the content keeps the page gutter */
-.logo { height: 34px; width: auto; flex: none; } /* the ink wordmark, cropped tight - the height sets its width */
+.logo { height: 34px; width: auto; flex: none; } /* the blue wordmark, cropped tight - the height sets its width */
 
 /* Raise | Dashboard: one segmented control; an ink thumb slides under the current one. */
 .nav { position: relative; display: inline-flex; gap: 2px; padding: 3px; border-radius: 999px; background: rgb(0 0 0 / 0.05); }

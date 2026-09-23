@@ -4,9 +4,9 @@
 // not intended for slow data fetching" - so it verifies a signature and nothing else. No session
 // table, no database round trip in the hot path.
 //
-// Not a JWT library, and not Auth.js: the pilot signs in with a per-company access code, so
+// Not a JWT library, and not Auth.js: people sign in with a personal code or Microsoft, so
 // HMAC-SHA256 over base64url JSON is the whole requirement and it costs no dependency.
-// Revocation is by rotating AUTH_SECRET or the company's access code.
+// Revocation is by rotating AUTH_SECRET (per-person revocation: docs/SECURITY.md).
 //
 // Pure: node:crypto only. No React, no DOM, no next/* - this file is imported by the proxy.
 import { createHmac, timingSafeEqual } from "node:crypto";

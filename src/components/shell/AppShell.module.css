@@ -3,9 +3,8 @@
 
 .rail { width: 246px; flex: none; background: var(--nh-dark); display: flex; flex-direction: column; padding: 20px 14px 70px; overflow: auto; transition: transform 0.22s ease; }
 .brand { display: flex; align-items: center; gap: 10px; padding: 0 8px 20px; }
-.logo { border-radius: 8px; flex: none; }
+.logo { height: 30px; width: auto; flex: none; }
 .brandText { display: flex; flex-direction: column; min-width: 0; flex: 1; }
-.brandName { font-size: 14px; font-weight: 700; color: var(--nh-on-dark); letter-spacing: -0.01em; }
 .brandTenant { font-family: var(--nh-mono); font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: #7d7c73; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .close { display: none; width: 30px; height: 30px; border-radius: 8px; background: #2e2e28; color: var(--nh-on-dark); align-items: center; justify-content: center; font-size: 16px; cursor: pointer; flex: none; border: 0; }
 

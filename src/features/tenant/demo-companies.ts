@@ -2,7 +2,8 @@
 import type { Role } from "@/config/roles";
 
 export type DemoUser = { id: string; name: string; email: string; role: Role; dept: string; handle?: string };
-export type DemoCompany = { slug: string; name: string; mark: string; anonymousHandles: boolean; users: DemoUser[] };
+// `stage` is set for a company out of Postgres; the built-in table has none, which means "demo".
+export type DemoCompany = { slug: string; name: string; mark: string; anonymousHandles: boolean; users: DemoUser[]; stage?: string };
 
 export const DEMO_COMPANIES: DemoCompany[] = [
   {

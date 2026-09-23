@@ -6,12 +6,12 @@
 import Link from "next/link";
 import { useLayoutEffect, useRef, useState } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
-import { PageSkeleton } from "@/components/ui/Skeleton";
 import { visibleTo } from "@/components/dashboard/derive";
 import { Avatar, Pill, statusTone } from "@/components/dashboard/shared/primitives";
 import { dashboardRow, type DashRow } from "@/features/cases/rows";
 import { scoreBand } from "@/features/scoring";
 import styles from "./DashboardView.module.css";
+import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 
 type Filter = "all" | "problem" | "idea" | "mine";
 type Sort = "score" | "open" | "new";
@@ -45,7 +45,7 @@ export function DashboardView() {
     window.addEventListener("resize", measure);
     return () => { ro.disconnect(); window.removeEventListener("resize", measure); };
   }, [filter, role]);
-  if (!ready) return <PageSkeleton />;
+  if (!ready) return <PageSkeleton kind="dashboard" delay />;
 
   const who = persona.who;
   const rows = D.cases.filter((c) => visibleTo(ctx, c)).map((c) => dashboardRow(c, seed.promiseDays, who, log));

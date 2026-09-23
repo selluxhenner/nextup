@@ -107,6 +107,13 @@ describe("the identifying-lookup exception", () => {
     expect(scopeViolation("ApiToken", "findUnique", { where: { hash: "abc" } })).toBeNull();
   });
 
+  it("lets a person be found by their globally unique login-code hash", () => {
+    expect(scopeViolation("User", "findUnique", { where: { loginCodeHash: "abc" } })).toBeNull();
+    expect(scopeViolation("User", "findMany", { where: { loginCodeHash: "abc" } })).toBeInstanceOf(Error);
+    expect(scopeViolation("User", "update", { where: { loginCodeHash: "abc" } })).toBeInstanceOf(Error);
+    expect(scopeViolation("User", "findUnique", { where: { loginCodeHash: "abc", role: "manager" } })).toBeInstanceOf(Error);
+  });
+
   it("does not widen into a general read of the table", () => {
     // Only the unique column, on its own, on a single-row read.
     expect(scopeViolation("ApiToken", "findMany", { where: { hash: "abc" } })).toBeInstanceOf(Error);
@@ -123,5 +130,27 @@ describe("the identifying-lookup exception", () => {
 
   it("still requires the value to be present", () => {
     expect(scopeViolation("ApiToken", "findUnique", { where: { hash: undefined } })).toBeInstanceOf(Error);
+  });
+});
+
+describe("the admin automation read", () => {
+  // /admin is cross-company by nature, but "every company" is the caller's intention, not a
+  // property of the query: it passes the ids it already listed, and `in` still names them.
+  it("allows a groupBy pinned to a list of companies", () => {
+    expect(
+      scopeViolation("CaseEvent", "groupBy", {
+        by: ["companyId"],
+        where: { companyId: { in: ["c1", "c2"] }, source: "n8n" },
+      }),
+    ).toBeNull();
+    expect(
+      scopeViolation("ApiToken", "findMany", { where: { companyId: { in: ["c1"] }, name: "n8n" } }),
+    ).toBeNull();
+  });
+
+  it("still refuses the same read with no company at all", () => {
+    expect(
+      scopeViolation("CaseEvent", "groupBy", { by: ["companyId"], where: { source: "n8n" } }),
+    ).toBeInstanceOf(Error);
   });
 });

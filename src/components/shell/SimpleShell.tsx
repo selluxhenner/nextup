@@ -56,9 +56,9 @@ export function SimpleShell({ children }: { children: React.ReactNode }) {
     <div className={styles.root}>
       <Ground />
       <header className={styles.bar}>
-        {/* The ink wordmark carries the name; the company only shows on hover (the mockup keeps the bar to three things). */}
+        {/* The blue wordmark carries the name; the company only shows on hover (the mockup keeps the bar to three things). */}
         <Link href={"/" + tenant.slug + "/raise"} className={styles.brand} title={tenant.name} onClick={() => setPop(null)}>
-          <Image src="/brand/nextup-logo-black.png" alt={SITE.name} width={494} height={212} className={styles.logo} priority />
+          <Image src="/brand/nextup-logo-blue.png" alt={SITE.name} width={506} height={224} className={styles.logo} priority />
         </Link>
 
         <nav ref={navRef} className={styles.nav} aria-label="Main">

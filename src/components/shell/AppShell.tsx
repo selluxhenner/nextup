@@ -44,9 +44,8 @@ function RailShell({ children }: { children: React.ReactNode }) {
       <Ground />
       <aside className={styles.rail} data-open={menu ? "true" : undefined} aria-label="Main">
         <div className={styles.brand}>
-          <Image src="/brand/logo.png" alt="" width={28} height={28} className={styles.logo} />
+          <Image src="/brand/nextup-logo-blue.png" alt={SITE.name} width={506} height={224} className={styles.logo} />
           <span className={styles.brandText}>
-            <span className={styles.brandName}>{SITE.name}</span>
             <span className={styles.brandTenant}>{tenant.name}</span>
           </span>
           <button type="button" className={styles.close} onClick={() => setMenu(false)} aria-label="Close menu">×</button>

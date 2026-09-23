@@ -6,6 +6,15 @@ import { cookies } from "next/headers";
 import type { Role } from "@/config/roles";
 import { SESSION_COOKIE, SESSION_TTL_SECONDS, signSession } from "@/features/auth/cookie";
 
+/**
+ * Send login cookies over https only. COOKIE_SECURE=true forces it; a public https scheme turns it
+ * on by itself, so a production box cannot end up sending sessions in the clear because one of
+ * two env vars was forgotten.
+ */
+export function secureCookies(): boolean {
+  return process.env.COOKIE_SECURE === "true" || process.env.PUBLIC_SCHEME === "https";
+}
+
 export type SessionUser = { id: string; name: string; handle: string | null; role: string };
 
 export async function issueSession(companyId: string, slug: string, user: SessionUser): Promise<void> {
@@ -32,7 +41,7 @@ export async function issueSession(companyId: string, slug: string, user: Sessio
     // Scoped to this exact host, never ".<root>" - otherwise one company's subdomain could read
     // another's cookie, which is the isolation we are claiming.
     path: "/",
-    secure: process.env.COOKIE_SECURE === "true",
+    secure: secureCookies(),
     maxAge: SESSION_TTL_SECONDS,
   });
 }

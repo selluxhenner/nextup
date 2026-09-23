@@ -1,32 +1,31 @@
 "use client";
-// Existing companies: where each one lives, how much is in it, and the two destructive actions.
+// Existing companies: where each one lives, how much is in it, who can get in, and the
+// destructive actions.
 import { useActionState } from "react";
 import {
   createApiTokenAction,
   deleteCompanyAction,
-  rotateAccessCodeAction,
+  setCompanyStageAction,
   type CompanyRow,
   type RotateState,
+  type StageState,
   type TokenState,
 } from "@/server/actions/admin";
+import { CompanyAccess } from "./CompanyAccess";
+import { nextStage, STAGE_MEANING, type Stage } from "@/features/admin/stages";
 import styles from "@/app/admin/admin.module.css";
 
-export function CompanyList({ companies }: { companies: CompanyRow[] }) {
-  const [rotated, rotate] = useActionState<RotateState, FormData>(rotateAccessCodeAction, {});
+// readOnly: no database, so the three write actions would only answer with an error. The rows
+// still show - see features/admin/demo.ts.
+export function CompanyList({ companies, readOnly = false }: { companies: CompanyRow[]; readOnly?: boolean }) {
   const [removed, remove] = useActionState<RotateState, FormData>(deleteCompanyAction, {});
   const [issued, issueToken] = useActionState<TokenState, FormData>(createApiTokenAction, {});
+  const [staged, moveStage] = useActionState<StageState, FormData>(setCompanyStageAction, {});
 
   if (companies.length === 0) return null;
 
   return (
     <div className={styles.rows}>
-      {rotated.accessCode ? (
-        <div className={styles.ok}>
-          <strong>New access code for {rotated.slug}</strong>
-          <div className={styles.code}>{rotated.accessCode}</div>
-          <p className="nh-hint">The previous code stopped working the moment this was made.</p>
-        </div>
-      ) : null}
       {issued.token ? (
         <div className={styles.ok}>
           <strong>API token for {issued.slug}</strong>
@@ -38,7 +37,7 @@ export function CompanyList({ companies }: { companies: CompanyRow[] }) {
         </div>
       ) : null}
       {issued.error ? <p className={styles.error} role="alert">{issued.error}</p> : null}
-      {rotated.error ? <p className={styles.error} role="alert">{rotated.error}</p> : null}
+      {staged.error ? <p className={styles.error} role="alert">{staged.error}</p> : null}
       {removed.error ? <p className={styles.error} role="alert">{removed.error}</p> : null}
 
       {companies.map((c) => (
@@ -51,28 +50,43 @@ export function CompanyList({ companies }: { companies: CompanyRow[] }) {
             </span>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <span className={styles.stage}>{c.stage}</span>
-            <form action={rotate}>
-              <input type="hidden" name="slug" value={c.slug} />
-              <button className="nh-btn nh-btn-ghost nh-btn-sm" type="submit">New code</button>
-            </form>
-            <form action={issueToken}>
-              <input type="hidden" name="slug" value={c.slug} />
-              <button className="nh-btn nh-btn-ghost nh-btn-sm" type="submit">API token</button>
-            </form>
-            <form
-              action={remove}
-              onSubmit={(e) => {
-                const typed = window.prompt(`Delete ${c.slug}? This takes its people and its whole history with it. Type the slug to confirm.`);
-                if (typed === null) { e.preventDefault(); return; }
-                (e.currentTarget.elements.namedItem("confirm") as HTMLInputElement).value = typed;
-              }}
-            >
-              <input type="hidden" name="slug" value={c.slug} />
-              <input type="hidden" name="confirm" defaultValue="" />
-              <button className={`nh-btn nh-btn-ghost nh-btn-sm ${styles.danger}`} type="submit">Delete</button>
-            </form>
+            {readOnly || !nextStage(c.stage) ? (
+              <span className={styles.stage} title={STAGE_MEANING[c.stage as Stage]}>{c.stage}</span>
+            ) : (
+              <form action={moveStage}>
+                <input type="hidden" name="slug" value={c.slug} />
+                <input type="hidden" name="stage" value={nextStage(c.stage) ?? ""} />
+                <button
+                  type="submit"
+                  className={styles.stageButton}
+                  title={`Move to ${nextStage(c.stage)} - ${STAGE_MEANING[nextStage(c.stage) as Stage]}`}
+                >
+                  {c.stage} <span aria-hidden="true">→</span> {nextStage(c.stage)}
+                </button>
+              </form>
+            )}
+            {readOnly ? null : (
+              <>
+              <form action={issueToken}>
+                <input type="hidden" name="slug" value={c.slug} />
+                <button className="nh-btn nh-btn-ghost nh-btn-sm" type="submit">API token</button>
+              </form>
+              <form
+                action={remove}
+                onSubmit={(e) => {
+                  const typed = window.prompt(`Delete ${c.slug}? This takes its people and its whole history with it. Type the slug to confirm.`);
+                  if (typed === null) { e.preventDefault(); return; }
+                  (e.currentTarget.elements.namedItem("confirm") as HTMLInputElement).value = typed;
+                }}
+              >
+                <input type="hidden" name="slug" value={c.slug} />
+                <input type="hidden" name="confirm" defaultValue="" />
+                <button className={`nh-btn nh-btn-ghost nh-btn-sm ${styles.danger}`} type="submit">Delete</button>
+              </form>
+              </>
+            )}
           </div>
+          {readOnly ? null : <CompanyAccess company={c} />}
         </div>
       ))}
     </div>

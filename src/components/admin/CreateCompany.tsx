@@ -11,10 +11,17 @@ type PersonDraft = { key: number; name: string; email: string; role: string; dep
 
 const blank = (key: number, role = "member"): PersonDraft => ({ key, name: "", email: "", role, dept: "" });
 
-export function CreateCompany() {
+/** Pre-fill from a pilot request (/admin/companies?from=<id>): its company, and its sender as manager. */
+export type CreateInitial = { name: string; personName: string; personEmail: string };
+
+export function CreateCompany({ initial }: { initial?: CreateInitial }) {
   const [state, act, pending] = useActionState<CreateState, FormData>(createCompanyAction, { status: "idle" });
-  const [slug, setSlug] = useState("");
-  const [people, setPeople] = useState<PersonDraft[]>([blank(1, "manager"), blank(2, "leader"), blank(3, "member")]);
+  const [slug, setSlug] = useState(() => (initial ? normaliseSlug(initial.name) : ""));
+  const [people, setPeople] = useState<PersonDraft[]>(() => [
+    initial ? { ...blank(1, "manager"), name: initial.personName, email: initial.personEmail } : blank(1, "manager"),
+    blank(2, "leader"),
+    blank(3, "member"),
+  ]);
   const [nextKey, setNextKey] = useState(4);
 
   if (state.status === "created") {
@@ -22,10 +29,16 @@ export function CreateCompany() {
       <div className={styles.ok}>
         <strong>{state.slug} is live.</strong>
         <p className="nh-hint">
-          Open it at <a href={state.url}>{state.url}</a>. Share this access code with the team -
-          it is shown once and only its hash is stored.
+          Open it at <a href={state.url}>{state.url}</a>. Each person gets their own login code -
+          give each one only to that person. Shown once; only hashes are stored. A lost code is
+          replaced under the company&apos;s &ldquo;People &amp; sign-in&rdquo;.
         </p>
-        <div className={styles.code}>{state.accessCode}</div>
+        {state.codes.map((c) => (
+          <div key={c.email}>
+            <strong>{c.name}</strong> <span className="nh-hint">· {c.email}</span>
+            <div className={styles.code}>{c.code}</div>
+          </div>
+        ))}
         {state.warnings.map((w) => (
           <p key={w} className={styles.warn}>{w}</p>
         ))}
@@ -38,7 +51,7 @@ export function CreateCompany() {
     <form action={act} className={styles.grid} autoComplete="off">
       <div className={styles.two}>
         <Field id="name" label="Company name">
-          <input className="nh-input" id="name" name="name" required placeholder="Bosch Rexroth AG" />
+          <input className="nh-input" id="name" name="name" required placeholder="Bosch Rexroth AG" defaultValue={initial?.name} />
         </Field>
         <Field id="slug" label="Slug (the subdomain)">
           <input
@@ -57,6 +70,17 @@ export function CreateCompany() {
         <select className="nh-input" id="template" name="template" defaultValue="demo">
           <option value="demo">Demo data — a copy of Acme&rsquo;s cases, routes and org chart</option>
           <option value="empty">Empty — real customer, starts with nothing</option>
+        </select>
+      </Field>
+
+      <Field
+        id="stage"
+        label="Who logs in"
+        hint="Real people: login asks for their own work email, and the demo tools (switch person, reset, +1 day) are off. You can move a demo company to real later, never back."
+      >
+        <select className="nh-input" id="stage" name="stage" defaultValue="demo">
+          <option value="demo">Demo — made-up people, for sales calls and walkthroughs</option>
+          <option value="sandbox">Real people — a customer trying it out (sandbox)</option>
         </select>
       </Field>
 

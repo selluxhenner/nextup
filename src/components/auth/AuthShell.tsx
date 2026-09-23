@@ -2,18 +2,20 @@
 import Image from "next/image";
 import Link from "next/link";
 import { SITE } from "@/config/site";
-import { SiteHeader } from "@/components/marketing/SiteHeader";
 import { Ground } from "@/components/shell/Ground";
+import { LoginPageTransition } from "./LoginPageTransition";
 import styles from "./AuthShell.module.css";
 
-type Props = { side: React.ReactNode; children: React.ReactNode; art?: "hand" };
+type Props = { side: React.ReactNode; children: React.ReactNode; art?: "hand"; backHref?: string };
 
-export function AuthShell({ side, children, art }: Props) {
+export function AuthShell({ side, children, art, backHref = "/" }: Props) {
   if (art === "hand") {
     return (
-      <div className={`${styles.shell} ${styles.artShell}`}>
+      <LoginPageTransition key={backHref} step={backHref === "/login" ? "company" : "find"}>
         <Ground />
-        <SiteHeader onLoginPage />
+        <Link className={styles.artLogo} href="/" aria-label={`${SITE.name} home`}>
+          <Image src="/brand/nextup-horizontal-black.png" alt={SITE.name} width={140} height={72} priority />
+        </Link>
         <section className={styles.authPanel}>
           <aside className={styles.art}>
             <Image
@@ -27,10 +29,11 @@ export function AuthShell({ side, children, art }: Props) {
             <div className={`${styles.sideBody} ${styles.artContent}`}>{side}</div>
           </aside>
           <main className={styles.artMain}>
+            <Link className={styles.artBack} href={backHref}>← Back</Link>
             <div className={`${styles.card} ${styles.artCard}`}>{children}</div>
           </main>
         </section>
-      </div>
+      </LoginPageTransition>
     );
   }
 
@@ -39,8 +42,7 @@ export function AuthShell({ side, children, art }: Props) {
       <Ground />
       <aside className={styles.side}>
         <Link className={styles.logo} href="/" aria-label={`${SITE.name} home`}>
-          <Image src="/brand/logo.png" alt="" width={28} height={28} />
-          <span>{SITE.name}</span>
+          <Image src="/brand/nextup-logo-blue.png" alt={SITE.name} width={506} height={224} />
         </Link>
         <div className={styles.sideBody}>{side}</div>
         <p className={`${styles.sideFoot} nh-mono`}>Berlin · 2026</p>

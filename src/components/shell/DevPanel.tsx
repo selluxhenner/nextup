@@ -24,6 +24,9 @@ export function DevPanel() {
     return () => document.removeEventListener("mousedown", onDown);
   }, [dev, setDev]);
 
+  // A company with real people gets no demo controls; the actions refuse them anyway.
+  if (ctx.tenant.demoTools === false) return null;
+
   return (
     <div className={styles.dev} ref={box}>
       {dev && (

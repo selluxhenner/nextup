@@ -1,40 +1,16 @@
-/* Page skeleton. Same card shape as the dashboard views (ui.module.css .card); one slow shimmer,
-   transform-only so a weak GPU is not asked to repaint every frame. Still for reduced motion. */
-/* Delayed (the default, used while a view waits for hydration): hidden for the first 400ms, so a
-   fast device never sees it flash and a slow one sees it fade in. CSS-only, so the delay also runs
-   before hydration. Not delayed on navigation: the old page is already gone, so show it at once. */
-.page { display: flex; flex-direction: column; gap: 14px; min-height: 40vh; }
-.page[data-delay="true"] { animation: appear 0.25s ease 0.4s both; }
-@keyframes appear { from { opacity: 0; visibility: hidden; } to { opacity: 1; visibility: visible; } }
-.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+/* Grey boxes standing in for content that has not arrived yet. One soft pulse; none under reduced motion. */
+.box { display: block; flex: none; max-width: 100%; background: var(--nh-line-soft); border-radius: var(--nh-r-sm); animation: pulse 1.5s ease-in-out infinite; }
+.box[data-r="md"] { border-radius: 12px; }
+.box[data-r="lg"] { border-radius: var(--nh-r-lg); }
+.box[data-r="pill"] { border-radius: 999px; }
+.box[data-r="circle"] { border-radius: 50%; }
+.dark { background: rgb(255 255 255 / 0.28); } /* on a dark or blue panel: a lighter wash, not grey */
 
-.head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
-.headText { display: flex; flex-direction: column; gap: 10px; }
-
-.card { display: flex; align-items: center; gap: 14px; background: var(--nh-card); border-radius: var(--nh-r-lg); padding: 18px 20px; box-shadow: var(--nh-card-shadow); }
-.cardText { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 9px; }
-
-.bone { position: relative; display: block; overflow: hidden; background: var(--nh-line-soft); border-radius: 6px; flex: none; }
-.bone::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.6), transparent); transform: translateX(-100%); animation: shimmer 1.6s ease-in-out infinite; }
-.bone[data-size="title"] { width: 220px; height: 28px; border-radius: 8px; }
-.bone[data-size="sub"] { width: 300px; height: 13px; }
-.bone[data-size="tools"] { width: 240px; height: 34px; border-radius: 999px; }
-.bone[data-size="avatar"] { width: 32px; height: 32px; border-radius: 50%; }
-.bone[data-size="line"] { width: 70%; height: 14px; }
-.bone[data-size="short"] { width: 40%; height: 11px; }
-.bone[data-size="pill"] { width: 72px; height: 22px; border-radius: 999px; }
-
-@keyframes shimmer { to { transform: translateX(100%); } }
-
-@media (prefers-reduced-motion: reduce) {
-  .page[data-delay="true"] { animation-duration: 0s; } /* keep the delay, drop the fade */
-  .bone::after { animation: none; display: none; }
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
 }
 
-@media (max-width: 760px) {
-  .bone[data-size="title"] { width: 60%; }
-  .bone[data-size="sub"] { width: 85%; }
-  .bone[data-size="tools"] { width: 100%; }
-  .bone[data-size="pill"] { display: none; }
-  .card { padding: 14px 16px; }
+@media (prefers-reduced-motion: reduce) {
+  .box { animation: none; }
 }

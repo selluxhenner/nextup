@@ -80,32 +80,56 @@ export function buildRaisedNotice(args: {
   };
 }
 
+export type Delivery = { ok: true } | { ok: false; error: string };
+
+/**
+ * The one place the webhook is actually called. Returns what happened instead of throwing, so
+ * both callers can have what they need: the raise path ignores the answer, and the admin retry
+ * shows it. A default timeout short enough that nothing waits on n8n for long.
+ */
+export async function deliverRaisedNotice(notice: RaisedNotice, timeoutMs = 2000): Promise<Delivery> {
+  const url = process.env.N8N_HOOK_URL;
+  if (!url) return { ok: false, error: "N8N_HOOK_URL is not set, so there is nowhere to send this." };
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        ...(process.env.N8N_HOOK_TOKEN ? { "x-nextup-token": process.env.N8N_HOOK_TOKEN } : {}),
+      },
+      body: JSON.stringify(notice),
+      signal: controller.signal,
+    });
+    // The webhook answers 202 on receipt. A 404 means the workflow is not active; a 403 means the
+    // shared token does not match. Both are worth reading, so pass the status through.
+    if (!res.ok) return { ok: false, error: `n8n answered ${res.status} ${res.statusText || ""}`.trim() + "." };
+    return { ok: true };
+  } catch (err) {
+    const why = err instanceof Error && err.name === "AbortError"
+      ? `No answer within ${timeoutMs}ms.`
+      : err instanceof Error ? err.message : "The request failed.";
+    return { ok: false, error: why };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 /**
  * Fire and forget. Never throws, never blocks: the caller does not await it, and a failure is a
  * log line rather than a broken raise.
  */
 export function notifyCaseRaised(notice: RaisedNotice): void {
-  const url = process.env.N8N_HOOK_URL;
-  if (!url) return;
+  if (!process.env.N8N_HOOK_URL) return;
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 2000);
-
-  void fetch(url, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      ...(process.env.N8N_HOOK_TOKEN ? { "x-nextup-token": process.env.N8N_HOOK_TOKEN } : {}),
-    },
-    body: JSON.stringify(notice),
-    signal: controller.signal,
-  })
-    .catch(() => {
-      // n8n down, wrong URL, timeout - all fine. The case is already saved; the notification is
-      // the optional half. A catch-up workflow can poll GET ?since= for anything missed.
-      console.warn("[n8n] could not deliver case.raised notice for", notice.slug);
-    })
-    .finally(() => clearTimeout(timeout));
+  void deliverRaisedNotice(notice).then((result) => {
+    if (result.ok) return;
+    // n8n down, wrong URL, timeout - all fine. The case is already saved; the notification is
+    // the optional half. /admin lists what never came back, and can re-send it.
+    console.warn("[n8n] could not deliver case.raised notice for", notice.slug, "-", result.error);
+  });
 }
 
 /** Where this company lives, for the deep links in the message. */
