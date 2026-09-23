@@ -5,11 +5,11 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ROLE_HOME } from "@/config/roles";
 import { useDemo } from "./DemoProvider";
-import ui from "./shared/ui.module.css";
+import { PageSkeleton } from "@/components/ui/Skeleton";
 
 export function RoleRouter() {
   const { ready, role, href } = useDemo();
   const router = useRouter();
   useEffect(() => { if (ready) router.replace(href(ROLE_HOME[role])); }, [ready, role, href, router]);
-  return <div className={ui.loading} />;
+  return <PageSkeleton />;
 }

@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import { useDemo } from "@/components/dashboard/DemoProvider";
+import { PageSkeleton } from "@/components/ui/Skeleton";
 import { canOpen } from "@/components/dashboard/derive";
 import { Avatar, Empty, Pill, reasonTone, statusTone } from "@/components/dashboard/shared/primitives";
 import type { CaseEvent } from "@/features/cases/events";
@@ -44,7 +45,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
   const [why, setWhy] = useState(""); // the reason behind "affects my team too" / the new information behind a re-evaluation
   const [asking, setAsking] = useState(false); // the why field is open
   const [big, setBig] = useState<number | null>(null); // index of the screenshot shown full size
-  if (!ready) return <div className={ui.loading} />;
+  if (!ready) return <PageSkeleton />;
   const c = S.cases.find((x) => x.id === caseId);
   // Someone else's case reads exactly like a missing one - the title is not leaked either way.
   if (!c || !canOpen(ctx, c)) {

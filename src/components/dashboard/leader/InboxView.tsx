@@ -5,6 +5,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
+import { PageSkeleton } from "@/components/ui/Skeleton";
 import { deskCases, inboxIdeas, inboxSorted, openCases, problemOf } from "@/components/dashboard/derive";
 import { Avatar, Btn, Empty, Pill, reasonTone, type Tone } from "@/components/dashboard/shared/primitives";
 import { ViewHead } from "@/components/dashboard/shared/ViewHead";
@@ -17,7 +18,7 @@ export function InboxView({ initialId }: { initialId?: string }) {
   const { seed, D, demo, persona, act, openSheet, showToast, ready, f, href } = ctx;
   // Selection: the page remounts this view (key = ?id) when a search result or link picks a case.
   const [cid, setCid] = useState<string | null>(initialId ?? null);
-  if (!ready) return <div className={ui.loading} />;
+  if (!ready) return <PageSkeleton />;
 
   const who = persona.who, P = seed.promiseDays;
   const desk = deskCases(ctx), open = openCases(ctx);

@@ -1,7 +1,6 @@
 /* What happened to what I sent. One centred column of white cards on the grey ground; the four
    steps are a thin bar per step - ink when done, orange only where time is the story (now / late). */
 .page { max-width: 720px; margin: 0 auto; width: 100%; display: flex; flex-direction: column; gap: 14px; }
-.loading { min-height: 40vh; }
 
 .head { display: flex; flex-direction: column; gap: 4px; }
 .title { font-size: 28px; font-weight: 700; letter-spacing: -0.025em; }
