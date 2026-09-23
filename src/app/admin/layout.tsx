@@ -5,6 +5,7 @@
 // in each page, so it stays put while a page loads; its badges come from adminContext(), which the
 // page shares, so they cost no extra read.
 import type { Metadata } from "next";
+import Image from "next/image";
 import { DEMO_COMPANIES } from "@/features/tenant/demo-companies";
 import { dashboardUrl, landingUrl } from "@/features/tenant/urls";
 import { adminBase } from "@/features/admin/nav";
@@ -28,7 +29,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   return (
     <div className={styles.shell}>
       <header className={styles.bar}>
-        <span className={styles.logo}>NextUp</span>
+        <Image src="/brand/nextup-logo-blue.png" alt="NextUp" width={506} height={224} className={styles.logo} />
         <span className={styles.tag}>admin</span>
         <nav className={styles.barNav}>
           <a href={landingUrl()}>Landing page</a>

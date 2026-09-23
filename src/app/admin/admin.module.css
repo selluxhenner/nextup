@@ -13,7 +13,7 @@
   background: var(--nh-card, #fff);
 }
 
-.logo { font-weight: 650; letter-spacing: -0.01em; }
+.logo { height: 28px; width: auto; align-self: center; }
 
 /* The two ways out of the admin area: the public site, and the demo company's dashboard. */
 .barNav {
