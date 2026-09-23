@@ -168,3 +168,9 @@ TODO.local.md
 NOTES.local.md
 .github/ci/out/
 next-env.d.ts
+
+# Playwright (npm run e2e): run output, the HTML report, traces
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
