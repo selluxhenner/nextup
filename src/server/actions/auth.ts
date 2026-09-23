@@ -8,13 +8,16 @@
 // The old shared company code + "who are you?" list is gone: with it, anyone holding the code
 // could pick any name - the manager's included - and the whole staff list went to the browser.
 //
-// Demo boxes keep a one-click "view as" list (demoSignIn below) - but only with LOGIN_DEMO_FILL
-// set on the server AND for a company still in demo stage, whose people are made up.
+// Demo boxes keep a one-click "open the demo" button (demoSignIn below) - but only with
+// LOGIN_DEMO_FILL set on the server AND for a company still in demo stage, whose people are made up.
 import { redirect } from "next/navigation";
 import { ROLE_HOME, type Role } from "@/config/roles";
 import { hashLoginCode, looksLikeLoginCode, looksLikeSharedCode, normalizeLoginCode } from "@/features/auth/login-code";
 import { getDb, hasDatabase, orDemo } from "@/lib/db/client";
-import { demoLoginOpen } from "@/server/demo-login";
+import { findTenant, findTenantByEmail } from "@/features/tenant";
+import { normaliseSlug } from "@/features/tenant/create";
+import { tenantMode, companyUrl } from "@/features/tenant/urls";
+import { demoLoginOpen, demoPersonOf } from "@/server/demo-login";
 import { companyPrefix, safeNext } from "@/server/microsoft-login";
 import { clearSession, issueSession } from "@/server/issue-session";
 import { clientKey, forgive, throttle } from "@/server/throttle";
@@ -71,16 +74,41 @@ export async function codeLogin(_prev: LoginState, form: FormData): Promise<Logi
 /** Demo boxes only: become one of a demo company's made-up people in one click. */
 export async function demoSignIn(form: FormData): Promise<void> {
   const slug = String(form.get("slug") ?? "");
-  const userId = String(form.get("userId") ?? "");
   const next = safeNext(String(form.get("next") ?? ""));
 
-  // Re-checked here, not trusted from the page that rendered the button.
+  // Re-checked here, not trusted from the page that rendered the button - and the person is
+  // chosen here too: the form names no one.
   const company = await demoLoginOpen(slug);
-  const user = company?.users.find((u) => u.id === userId);
+  const user = company ? demoPersonOf(company) : null;
   if (!company || !user) redirect(companyPrefix(slug) + "/login");
 
   await issueSession(company.id, company.slug, user);
   redirect(companyPrefix(slug) + (next || ROLE_HOME[user.role as Role]));
+}
+
+export type FindState = { error?: string; email?: string; company?: string };
+
+/** Login step 1: a work email or a company name -> that company's login page. */
+export async function findCompany(_prev: FindState, form: FormData): Promise<FindState> {
+  const email = String(form.get("email") ?? "").trim();
+  const company = String(form.get("company") ?? "").trim();
+  const back = { email, company };
+  if (!email && !company) return { ...back, error: "Enter your work email or your company's NextUp name." };
+
+  const blocked = throttle("findCompany", await clientKey());
+  if (blocked) return { ...back, error: blocked };
+
+  // The name wins when both are filled in: it is the more deliberate of the two.
+  const tenant = company ? await findTenant(normaliseSlug(company)) : await findTenantByEmail(email.toLowerCase());
+  if (!tenant) {
+    return {
+      ...back,
+      error: company
+        ? `No company called "${company}" on NextUp. Check the short name in your invitation link.`
+        : "We don't know that email domain. Try your company's NextUp name instead.",
+    };
+  }
+  redirect(tenantMode() === "subdomain" ? `${companyUrl(tenant.slug)}/login` : `/${tenant.slug}/login`);
 }
 
 export async function signOut(slug: string) {
