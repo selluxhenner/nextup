@@ -14,6 +14,8 @@ export const RULES = {
   loginCode: { limit: 10, windowMs: 10 * 60_000 },
   /** Personal login code, per company from everywhere: caps a distributed guess at one company. */
   loginCodeAll: { limit: 200, windowMs: 10 * 60_000 },
+  /** Login step 1, "find your company": a person finding theirs, not a script mapping domains. */
+  findCompany: { limit: 30, windowMs: 10 * 60_000 },
   /** The /admin code opens everything - the tightest door. */
   adminLogin: { limit: 5, windowMs: 15 * 60_000 },
   /** The public /contact form: a real prospect sends one or two. */
