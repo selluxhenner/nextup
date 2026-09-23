@@ -1,6 +1,6 @@
 /* Design tokens. Imported once by src/app/globals.css. Same palette as legacy/demo (warm greige, ink, one orange for time) plus the logo blue for actions. */
 :root {
-  --nh-ground: #dcdbd6;      /* page background */
+  --nh-ground: #f9fcfc;      /* page background: the Ground's base (shell/Ground), so an overscroll edge matches it */
   --nh-surface: #faf9f7;     /* panels */
   --nh-card: #ffffff;        /* cards, inputs */
   --nh-line: #e6e5e0;
@@ -49,4 +49,37 @@
   --nh-space: 8px;
   --nh-page-x: clamp(16px, 5vw, 56px);
   --nh-max: 1120px;
+
+  /* Page scale, applied as `zoom` on <html> in globals.css. The design is drawn for a ~1920x950
+     canvas; a laptop at 100% shows it ~25% too large, so mouse-driven screens scale down toward
+     0.8 (what 80% browser zoom gave), big monitors scale up a little. Phones and tablets stay at 1:
+     their sizes are tuned per breakpoint. The smaller of the width and height factor wins. */
+  --nh-zoom-w: 1;
+  --nh-zoom-h: 1;
+  --nh-zoom: 1;
+  /* The viewport in page pixels. Viewport units are scaled by `zoom` too, so a full-height box
+     uses these instead of 100dvh / 100vw. */
+  --nh-screen-h: calc(100dvh / var(--nh-zoom));
+  --nh-screen-w: calc(100vw / var(--nh-zoom));
+}
+
+@supports (zoom: 1) {
+  @media (hover: hover) and (pointer: fine) {
+    :root { --nh-zoom: min(var(--nh-zoom-w), var(--nh-zoom-h)); }
+    @media (min-width: 900px) { :root { --nh-zoom-w: 0.94; } }
+    @media (min-width: 1000px) { :root { --nh-zoom-w: 0.88; } }
+    @media (min-width: 1100px) { :root { --nh-zoom-w: 0.84; } }
+    @media (min-width: 1200px) { :root { --nh-zoom-w: 0.8; } }
+    @media (min-width: 1600px) { :root { --nh-zoom-w: 0.84; } }
+    @media (min-width: 1700px) { :root { --nh-zoom-w: 0.88; } }
+    @media (min-width: 1800px) { :root { --nh-zoom-w: 0.94; } }
+    @media (min-width: 1900px) { :root { --nh-zoom-w: 1; } }
+    @media (min-width: 2300px) and (min-height: 1150px) { :root { --nh-zoom-w: 1.08; } }
+    @media (min-width: 2800px) and (min-height: 1400px) { :root { --nh-zoom-w: 1.16; } }
+    /* Laptops are short: below ~900px of height the page shrinks with it. */
+    @media (min-width: 1100px) and (max-height: 899px) { :root { --nh-zoom-h: 0.94; } }
+    @media (min-width: 1100px) and (max-height: 839px) { :root { --nh-zoom-h: 0.88; } }
+    @media (min-width: 1100px) and (max-height: 779px) { :root { --nh-zoom-h: 0.84; } }
+    @media (min-width: 1100px) and (max-height: 719px) { :root { --nh-zoom-h: 0.8; } }
+  }
 }

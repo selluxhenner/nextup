@@ -132,6 +132,9 @@ machine is `host.docker.internal:<port>`, which `compose.yml` maps for n8n.
 
 Earlier versions read this from n8n's own `$env.NEXTUP_BASE`, which tied the instance to exactly
 one app and needed `N8N_BLOCK_ENV_ACCESS_IN_NODE=false` to work at all. Both are gone.
+**`access to env vars denied`** — the write-back URL is `{{ $env.NEXTUP_BASE }}/...`, and n8n
+blocks `$env` in expressions unless `N8N_BLOCK_ENV_ACCESS_IN_NODE=false`. It is set on the n8n
+service in `compose.yml`; if you run n8n some other way, set it there too.
 
 **`/api//events` with an empty slug** — `$json` in the write-back node is the *email* node's
 output (`accepted`, `messageId`), not the composed fields. Every reference to the composed values

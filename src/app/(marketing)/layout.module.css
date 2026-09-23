@@ -1,1 +1,1 @@
-.site { min-height: 100dvh; } /* the blue Ground paints the surface */
+.site { min-height: var(--nh-screen-h); } /* the blue Ground paints the surface */

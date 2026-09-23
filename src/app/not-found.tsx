@@ -4,7 +4,7 @@ import { SITE } from "@/config/site";
 
 export default function NotFound() {
   return (
-    <main style={{ minHeight: "100dvh", display: "grid", placeItems: "center", padding: "var(--nh-page-x)", background: "var(--nh-surface)" }}>
+    <main style={{ minHeight: "var(--nh-screen-h)", display: "grid", placeItems: "center", padding: "var(--nh-page-x)", background: "var(--nh-surface)" }}>
       <div style={{ display: "grid", gap: 14, justifyItems: "start", maxWidth: 480 }}>
         <p className="nh-eyebrow">404 · nobody owns this page</p>
         <h1 style={{ fontSize: "clamp(30px, 5vw, 48px)", fontWeight: 800 }}>Page not found</h1>
