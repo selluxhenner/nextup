@@ -108,9 +108,12 @@ services:
     image: axllent/mailpit:latest
     restart: unless-stopped
     # Loopback only, for the same reason as n8n: the runbook's "did the owner get the mail?" step
-    # needs the inbox reachable without Caddy in front of it.
+    # needs the inbox reachable without Caddy in front of it, and 1025 is what a server started
+    # on this machine sends through (SMTP_URL=smtp://127.0.0.1:1025). Inside the stack the app
+    # uses mailpit:1025 and neither of these is involved.
     ports:
       - "127.0.0.1:8025:8025"
+      - "127.0.0.1:1025:1025"
     volumes:
       - maildata:/data
     environment:

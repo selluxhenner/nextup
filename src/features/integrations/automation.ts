@@ -68,7 +68,12 @@ export type AutomationReport = {
 };
 
 /** The one-line verdict at the top of the card. */
-export function summarise(facts: InstanceFacts, companies: readonly CompanyAutomation[]): AutomationSummary {
+export function summarise(
+  facts: InstanceFacts,
+  companies: readonly CompanyAutomation[],
+  /** How many cases have been raised at all. Without it "nothing has come back" is ambiguous. */
+  raises: number,
+): AutomationSummary {
   if (!facts.hookUrl) {
     return {
       state: "off",
@@ -86,25 +91,50 @@ export function summarise(facts: InstanceFacts, companies: readonly CompanyAutom
   }
 
   const delivered = companies.filter((c) => c.writeBacks > 0);
-  if (delivered.length === 0) {
-    const withToken = companies.filter((c) => c.tokenCreatedAt).length;
+  if (delivered.length > 0) {
+    return {
+      state: "live",
+      headline:
+        delivered.length === companies.length
+          ? "Live - every company has had a case answered by n8n."
+          : `Live for ${delivered.length} of ${companies.length} companies.`,
+      next: null,
+    };
+  }
+
+  // Nothing has come back. Which of the four reasons it is decides what to do about it, and the
+  // page used to guess the same one every time - telling you to import a workflow that was
+  // already imported and running.
+  if (!companies.some((c) => c.tokenCreatedAt)) {
     return {
       state: "idle",
-      headline: "n8n answers, but nothing has come back yet.",
-      next:
-        withToken === 0
-          ? "No company has an API token yet - issue one above, then paste it into the n8n credential."
-          : "Import case-raised-notify-owner.json, give it its credentials and activate it (ops/n8n/README.md).",
+      headline: "n8n answers, but no company can be written to yet.",
+      next: "No company has an API token - issue one above, then paste it into the n8n credential.",
+    };
+  }
+
+  if (raises === 0) {
+    return {
+      state: "idle",
+      headline: "Wired up, and waiting for something to do.",
+      next: "Nothing has been raised yet, so n8n has not been called. Raise a case to see it work.",
+    };
+  }
+
+  if (companies.some((c) => c.tokenLastUsedAt)) {
+    // n8n reached the API, so the webhook, the workflow and the email all ran. What did not
+    // finish is the write-back itself.
+    return {
+      state: "idle",
+      headline: "n8n reaches the API, but no notice has been written back.",
+      next: "The owner may have been emailed already. Check the credential is a token for THIS database - a token from another one answers 401 - then n8n's executions for the failing node.",
     };
   }
 
   return {
-    state: "live",
-    headline:
-      delivered.length === companies.length
-        ? "Live - every company has had a case answered by n8n."
-        : `Live for ${delivered.length} of ${companies.length} companies.`,
-    next: null,
+    state: "idle",
+    headline: "Cases are being raised, but n8n never calls back.",
+    next: "Import case-raised-notify-owner.json, give it its credentials and activate it - an imported-but-inactive workflow answers 404 (ops/n8n/README.md).",
   };
 }
 

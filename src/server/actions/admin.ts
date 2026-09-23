@@ -23,7 +23,7 @@ import {
   type NewPerson,
 } from "@/features/tenant/create";
 import { databaseOutage, getDb, hasDatabase, orDemo, reconnectDatabase } from "@/lib/db/client";
-import { automationFor, raisesFor } from "@/lib/db/automation";
+import { automationFor, raiseCountFor, raisesFor } from "@/lib/db/automation";
 import { databaseFacts, type DatabaseFacts } from "@/lib/db/health";
 import { describeDatabase, type DatabaseReport } from "@/features/admin/health";
 import { canMoveStage, isStage, STAGES } from "@/features/admin/stages";
@@ -478,14 +478,18 @@ export async function automationReport(): Promise<AutomationReport | null> {
     orderBy: { createdAt: "desc" },
     select: { id: true, slug: true, name: true },
   });
-  const [rows, reachable] = await Promise.all([automationFor(companies), pingInstance(hookUrl)]);
+  const [rows, raises, reachable] = await Promise.all([
+    automationFor(companies),
+    raiseCountFor(companies.map((c) => c.id)),
+    pingInstance(hookUrl),
+  ]);
 
   const facts: InstanceFacts = {
     hookUrl,
     hookTokenSet: Boolean(process.env.N8N_HOOK_TOKEN),
     reachable,
   };
-  return { facts, companies: rows, summary: summarise(facts, rows) };
+  return { facts, companies: rows, summary: summarise(facts, rows, raises) };
 }
 
 /**

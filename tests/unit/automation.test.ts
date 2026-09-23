@@ -40,37 +40,56 @@ describe("healthUrlFrom", () => {
 });
 
 describe("summarise", () => {
+  const TOKEN = "2026-09-22T10:00:00.000Z";
+
   it("is off when no hook url is configured", () => {
-    const s = summarise(facts({ hookUrl: null }), [company()]);
+    const s = summarise(facts({ hookUrl: null }), [company()], 0);
     expect(s.state).toBe("off");
     expect(s.next).toContain(".env");
   });
 
   it("is unreachable when the instance does not answer", () => {
-    expect(summarise(facts({ reachable: false }), [company()]).state).toBe("unreachable");
+    expect(summarise(facts({ reachable: false }), [company()], 3).state).toBe("unreachable");
   });
 
-  it("is idle while nothing has come back, and says a token is missing first", () => {
-    const s = summarise(facts(), [company()]);
+  // The four reasons nothing has come back. They need different answers, and the page used to
+  // give the same one to all of them - "import the workflow", even when it was already running.
+  it("asks for a token first, because nothing else can work without one", () => {
+    const s = summarise(facts(), [company()], 5);
     expect(s.state).toBe("idle");
     expect(s.next).toContain("API token");
   });
 
-  it("points at the workflow once a token exists but nothing has come back", () => {
-    const s = summarise(facts(), [company({ tokenCreatedAt: "2026-09-22T10:00:00.000Z" })]);
+  it("says so plainly when nothing has been raised yet", () => {
+    const s = summarise(facts(), [company({ tokenCreatedAt: TOKEN })], 0);
+    expect(s.state).toBe("idle");
+    expect(s.next).toContain("Nothing has been raised");
+    expect(s.next).not.toContain("case-raised-notify-owner.json");
+  });
+
+  it("points at the workflow when raises exist but n8n never called back", () => {
+    const s = summarise(facts(), [company({ tokenCreatedAt: TOKEN })], 4);
     expect(s.state).toBe("idle");
     expect(s.next).toContain("case-raised-notify-owner.json");
   });
 
-  // The rule this file exists for: a reachable instance is not a working one.
+  it("points at the credential when n8n reached the API but wrote nothing back", () => {
+    // The token was used, so the webhook, the workflow and the email all ran. A 401 on the
+    // write-back is the usual cause, and it is not fixed by re-importing anything.
+    const s = summarise(facts(), [company({ tokenCreatedAt: TOKEN, tokenLastUsedAt: TOKEN })], 4);
+    expect(s.state).toBe("idle");
+    expect(s.next).toContain("401");
+    expect(s.next).not.toContain("case-raised-notify-owner.json");
+  });
+
   it("is live only once a write-back exists", () => {
-    const used = company({ tokenCreatedAt: "2026-09-22T10:00:00.000Z", tokenLastUsedAt: "2026-09-22T10:05:00.000Z" });
-    expect(summarise(facts(), [used]).state).toBe("idle");
-    expect(summarise(facts(), [{ ...used, writeBacks: 1 }]).state).toBe("live");
+    const used = company({ tokenCreatedAt: TOKEN, tokenLastUsedAt: TOKEN });
+    expect(summarise(facts(), [used], 4).state).toBe("idle");
+    expect(summarise(facts(), [{ ...used, writeBacks: 1 }], 4).state).toBe("live");
   });
 
   it("counts how many companies are live when only some are", () => {
-    const s = summarise(facts(), [company({ writeBacks: 2, tokenCreatedAt: "x" }), company({ slug: "beta" })]);
+    const s = summarise(facts(), [company({ writeBacks: 2, tokenCreatedAt: "x" }), company({ slug: "beta" })], 4);
     expect(s.state).toBe("live");
     expect(s.headline).toContain("1 of 2");
     expect(s.next).toBeNull();
