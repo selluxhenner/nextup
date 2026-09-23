@@ -14,7 +14,7 @@ export function AuthShell({ side, children, art, backHref = "/" }: Props) {
       <LoginPageTransition key={backHref} step={backHref === "/login" ? "company" : "find"}>
         <Ground />
         <Link className={styles.artLogo} href="/" aria-label={`${SITE.name} home`}>
-          <Image src="/brand/nextup-horizontal-black.png" alt={SITE.name} width={140} height={72} priority />
+          <Image src="/brand/nextup-logo-blue.png" alt={SITE.name} width={506} height={224} priority />
         </Link>
         <section className={styles.authPanel}>
           <aside className={styles.art}>
