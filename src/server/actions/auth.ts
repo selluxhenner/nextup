@@ -4,27 +4,55 @@
 //
 // Two steps on purpose. The code is checked before any name or address is returned, so the
 // employee list of a pilot customer is not readable by anyone who guesses the subdomain.
+//
+// What step 2 looks like depends on the company's stage (policyFor in features/admin/stages.ts):
+// a demo company lists its people to pick from; a company with real people asks for your own
+// work email instead, so the shared code alone neither reveals the staff list nor lets you pick
+// the manager. Every code check is throttled (src/server/throttle.ts).
 import { redirect } from "next/navigation";
 import { ROLE_HOME, type Role } from "@/config/roles";
 import { verifyAccessCode } from "@/features/auth/access-code";
+import { policyFor } from "@/features/admin/stages";
+import { safeNextPath } from "@/features/tenant/urls";
 import { getDb, hasDatabase, orDemo } from "@/lib/db/client";
 import { demoCodeFor, isDemoCode } from "@/server/demo-login";
 import { clearSession, issueSession } from "@/server/issue-session";
+import { clientKey, forgive, throttle } from "@/server/throttle";
 
 export type LoginPerson = { id: string; name: string; email: string; role: Role; line: string };
 
 export type LoginState =
   | { step: "code"; error?: string }
-  | { step: "who"; code: string; people: LoginPerson[]; via?: "code" | "microsoft"; error?: string };
+  | {
+      step: "who";
+      code: string;
+      /** Empty when `ask` is "email": a real company's staff list never leaves the server. */
+      people: LoginPerson[];
+      ask?: "pick" | "email";
+      via?: "code" | "microsoft";
+      email?: string;
+      error?: string;
+    };
 
 const wrongCode = (): LoginState => ({
   step: "code",
   error: "That code doesn't open this company. Check for a typo, or ask your team lead for a fresh one.",
 });
 
-/** The real code, or - on a demo box only - the derived demo code (src/server/demo-login.ts). */
-function codeOpens(slug: string, code: string, hash: string): boolean {
-  return verifyAccessCode(code, hash) || isDemoCode(slug, code);
+/**
+ * The real code, or - on a demo box, for a demo-stage company only - the derived demo code
+ * (src/server/demo-login.ts). A sandbox/pilot/live company always needs its real code.
+ */
+function codeOpens(company: { slug: string; stage: string; accessCodeHash: string }, code: string): boolean {
+  if (verifyAccessCode(code, company.accessCodeHash)) return true;
+  return policyFor(company.stage).demoLogin && isDemoCode(company.slug, code);
+}
+
+/** Count one code attempt. Null to go ahead, or the "wait" state to return. */
+async function tooMany(slug: string): Promise<LoginState | null> {
+  const who = await clientKey();
+  const error = throttle("companyLogin", `${who}|${slug}`) ?? throttle("companyLoginAll", slug);
+  return error ? { step: "code", error } : null;
 }
 
 async function companyBySlug(slug: string) {
@@ -36,6 +64,7 @@ async function companyBySlug(slug: string) {
         select: {
           id: true,
           slug: true,
+          stage: true,
           accessCodeHash: true,
           users: { orderBy: { name: "asc" } },
         },
@@ -80,10 +109,14 @@ async function continueWithMicrosoft(form: FormData): Promise<LoginState> {
   const company = await companyBySlug(slug);
   if (!hasDatabase()) return noDatabase();
   if (!company) return { step: "code", error: "We couldn't find this company. Go back and pick it again." };
+  // The pretend Microsoft login skips the code entirely - demo companies only.
+  if (!policyFor(company.stage).demoLogin) {
+    return { step: "code", error: "Microsoft sign-in isn't connected for this company yet. Use your access code for now." };
+  }
   if (company.users.length === 0) {
     return { step: "code", error: "This company has no people yet. Add them in the admin page first." };
   }
-  return { step: "who", code, people: peopleOf(company.users), via: "microsoft" };
+  return whoStep(company, code, "microsoft");
 }
 
 /** Step 1 -> step 2. Returns the people only once the code is right. */
@@ -94,15 +127,33 @@ async function checkAccessCode(_prev: LoginState, form: FormData): Promise<Login
 
   if (!hasDatabase()) return noDatabase();
 
+  const blocked = await tooMany(slug);
+  if (blocked) return blocked;
+
   const company = await companyBySlug(slug);
   if (!hasDatabase()) return noDatabase();
-  if (!company || !codeOpens(slug, code, company.accessCodeHash)) return wrongCode();
+  if (!company || !codeOpens(company, code)) return wrongCode();
+  forgive("companyLogin", `${await clientKey()}|${slug}`);
 
   if (company.users.length === 0) {
     return { step: "code", error: "This company has no people yet. Add them in the admin page first." };
   }
 
-  return { step: "who", code, people: peopleOf(company.users), via: "code" };
+  return whoStep(company, code, "code");
+}
+
+/** Step 2's shape: a list to pick from (demo) or an email field (real people). */
+function whoStep(
+  company: { stage: string; users: Parameters<typeof peopleOf>[0] },
+  code: string,
+  via: "code" | "microsoft",
+  error?: string,
+  email?: string,
+): LoginState {
+  if (policyFor(company.stage).pickPersonAtLogin) {
+    return { step: "who", code, people: peopleOf(company.users), ask: "pick", via, error };
+  }
+  return { step: "who", code, people: [], ask: "email", via, email, error };
 }
 
 // The "who are you" list: employees first, then team leaders, then managers - each group by name.
@@ -120,26 +171,41 @@ async function signIn(_prev: LoginState, form: FormData): Promise<LoginState> {
   const slug = String(form.get("slug") ?? "");
   const code = String(form.get("code") ?? "").trim();
   const userId = String(form.get("userId") ?? "");
+  const email = String(form.get("email") ?? "").trim().toLowerCase();
   const next = String(form.get("next") ?? "");
-  const via = _prev.step === "who" ? _prev.via : undefined;
+  const via = _prev.step === "who" && _prev.via ? _prev.via : "code";
 
   if (!hasDatabase()) return noDatabase();
+
+  // Step 2 re-checks the code, so it is a guessing door too - counted like step 1.
+  const blocked = await tooMany(slug);
+  if (blocked) return blocked;
 
   const company = await companyBySlug(slug);
   if (!hasDatabase()) return noDatabase();
   // Re-checked, not trusted from the previous round trip.
-  if (!company || !codeOpens(slug, code, company.accessCodeHash)) return wrongCode();
+  if (!company || !codeOpens(company, code)) return wrongCode();
 
-  const user = company.users.find((u) => u.id === userId);
+  const policy = policyFor(company.stage);
+  const user = policy.pickPersonAtLogin
+    ? company.users.find((u) => u.id === userId)
+    : email
+      ? company.users.find((u) => u.email.toLowerCase() === email)
+      : undefined;
   if (!user) {
-    return { step: "who", code, people: peopleOf(company.users), via, error: "Pick who you are to continue." };
+    const error = policy.pickPersonAtLogin
+      ? "Pick who you are to continue."
+      : email
+        ? "That email isn't on this company's list. Use your work address, or ask your team lead to add you."
+        : "Enter your work email to continue.";
+    return whoStep(company, code, via, error, email);
   }
 
   const role = user.role as Role;
   await issueSession(company.id, company.slug, user);
 
   const home = ROLE_HOME[role];
-  const target = next.startsWith("/") && !next.startsWith("//") ? next : home;
+  const target = safeNextPath(next) ?? home;
   redirect(prefix(slug) + target);
 }
 

@@ -81,6 +81,25 @@ export function CompanyLoginForm({ slug, short, next, demoCode }: Props) {
         </Field>
       ) : microsoft ? (
         <input type="hidden" name="code" value={state.code} />
+      ) : state.ask === "email" ? (
+        // A company with real people: no list to pick from, you say who you are.
+        <>
+          <input type="hidden" name="code" value={state.code} />
+          <Field id="email" label="Your work email" error={state.error}>
+            <input
+              className="nh-input"
+              id="email"
+              name="email"
+              type="email"
+              placeholder={`name@${short.toLowerCase()}.com`}
+              autoComplete="email"
+              defaultValue={state.email}
+              aria-invalid={state.error ? true : undefined}
+              aria-describedby={state.error ? "email-error" : undefined}
+              autoFocus
+            />
+          </Field>
+        </>
       ) : (
         <>
           <input type="hidden" name="code" value={state.code} />
@@ -99,7 +118,7 @@ export function CompanyLoginForm({ slug, short, next, demoCode }: Props) {
         </>
       )}
 
-      {state.step === "who" && state.error && !microsoft ? (
+      {state.step === "who" && state.error && !microsoft && state.ask !== "email" ? (
         <p className="nh-error" role="alert">
           <span>{state.error}</span>
         </p>

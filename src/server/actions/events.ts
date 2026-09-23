@@ -13,9 +13,15 @@ import { appendEventRow, deleteEventsForTargets, resetCompanyLog } from "@/lib/d
 import { getDb, hasDatabase } from "@/lib/db/client";
 import { issueSession } from "@/server/issue-session";
 import { parseSeed } from "@/features/demo/parse";
+import { policyFor } from "@/features/admin/stages";
 import { buildRaisedNotice, companyBaseUrl, notifyCaseRaised } from "@/server/notify-n8n";
 
-const Payload: z.ZodType<EventPayload> = z.looseObject({}) as z.ZodType<EventPayload>;
+// Same ceiling as the integration endpoint (features/integrations MAX_PAYLOAD_BYTES): one event
+// is a title, a body and a few ids, never a file.
+const MAX_PAYLOAD_CHARS = 16 * 1024;
+const Payload: z.ZodType<EventPayload> = z
+  .looseObject({})
+  .refine((p) => JSON.stringify(p).length <= MAX_PAYLOAD_CHARS) as unknown as z.ZodType<EventPayload>;
 
 const Input = z.object({
   slug: z.string().min(1),
@@ -31,6 +37,17 @@ export type AppendOutcome = { ok: true } | { ok: false; error: string };
 /** Only a manager may move everyone's clock or wipe the company's history. */
 const isDemoOwner = (role: string) => role === "manager";
 
+/**
+ * And only in a demo company. From sandbox on the history is real people's cases: nobody rewinds
+ * it, wipes it or moves its clock from a dev panel (policyFor in features/admin/stages.ts).
+ */
+async function mayRewriteHistory(companyId: string): Promise<boolean> {
+  const company = await getDb().company.findUnique({ where: { id: companyId }, select: { stage: true } });
+  return Boolean(company && policyFor(company.stage).rewriteHistory);
+}
+
+const realCompany = "This company holds real people's cases - the demo tools are switched off.";
+
 export async function appendEventAction(input: AppendInput): Promise<AppendOutcome> {
   if (!hasDatabase()) return { ok: false, error: "No database is configured." };
 
@@ -43,6 +60,9 @@ export async function appendEventAction(input: AppendInput): Promise<AppendOutco
 
   if (type === "day.advanced" && !isDemoOwner(viewer.role)) {
     return { ok: false, error: "Only a manager can move the demo clock - everyone shares it." };
+  }
+  if (type === "day.advanced" && !(await mayRewriteHistory(viewer.companyId))) {
+    return { ok: false, error: realCompany };
   }
 
   // The actor is derived here, never taken from the client: a member posts under their handle,
@@ -104,6 +124,7 @@ export async function resetCompanyAction(slug: string): Promise<AppendOutcome> {
   const viewer = await getViewerFor(slug);
   if (!viewer) return { ok: false, error: "Your session has expired. Log in again." };
   if (!isDemoOwner(viewer.role)) return { ok: false, error: "Only a manager can reset the demo." };
+  if (!(await mayRewriteHistory(viewer.companyId))) return { ok: false, error: realCompany };
 
   await resetCompanyLog(viewer.companyId);
   revalidatePath("/" + slug, "layout");
@@ -117,6 +138,7 @@ export async function deleteAddedAction(slug: string, caseIds: string[]): Promis
   const viewer = await getViewerFor(slug);
   if (!viewer) return { ok: false, error: "Your session has expired. Log in again." };
   if (!isDemoOwner(viewer.role)) return { ok: false, error: "Only a manager can delete cases." };
+  if (!(await mayRewriteHistory(viewer.companyId))) return { ok: false, error: realCompany };
 
   await deleteEventsForTargets(viewer.companyId, caseIds.slice(0, 500));
   revalidatePath("/" + slug, "layout");
@@ -134,7 +156,7 @@ export async function switchUserAction(slug: string, userId: string): Promise<Ap
     where: { slug },
     select: { id: true, stage: true },
   });
-  if (!company || company.stage !== "demo") {
+  if (!company || !policyFor(company.stage).switchPerson) {
     return { ok: false, error: "Switching people is only available while a company is in demo stage." };
   }
   const user = await getDb().user.findFirst({ where: { companyId: company.id, id: userId } });

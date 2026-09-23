@@ -22,6 +22,18 @@ export function companyUrl(slug: string): string {
     : `${origin(process.env.APP_DOMAIN ?? "localhost")}/${slug}`;
 }
 
+/**
+ * A post-login `?next=` target, or null when it could leave this site. Only same-origin paths:
+ * "/cases/1" yes; "//evil.com", "/\evil.com" (browsers read the backslash as a slash), "https:..."
+ * and anything with control characters no.
+ */
+export function safeNextPath(next: string): string | null {
+  if (!next.startsWith("/") || next.length > 512) return null;
+  if (next.startsWith("//") || next.includes("\\")) return null;
+  if (/[\u0000-\u001f\u007f]/.test(next)) return null;
+  return next;
+}
+
 /** One company's dashboard - the page a visitor should land on when they want to see the product. */
 export function dashboardUrl(slug: string): string {
   return tenantMode() === "subdomain" ? `${companyUrl(slug)}/dashboard` : `/${slug}/dashboard`;

@@ -7,7 +7,7 @@
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { timingSafeEqual } from "node:crypto";
+import { createHash, timingSafeEqual } from "node:crypto";
 import { generateAccessCode, hashAccessCode } from "@/features/auth/access-code";
 import { ADMIN_COOKIE, signAdmin, verifyAdmin } from "@/features/auth/cookie";
 import type { CompanyRow, PilotRequestRow } from "@/features/admin/rows";
@@ -25,7 +25,7 @@ import { databaseOutage, getDb, hasDatabase, orDemo, reconnectDatabase } from "@
 import { automationFor, raisesFor } from "@/lib/db/automation";
 import { databaseFacts, type DatabaseFacts } from "@/lib/db/health";
 import { describeDatabase, type DatabaseReport } from "@/features/admin/health";
-import { isStage, STAGES } from "@/features/admin/stages";
+import { canMoveStage, isStage, STAGES } from "@/features/admin/stages";
 import { createToken } from "@/lib/db/tokens";
 import {
   healthUrlFrom,
@@ -37,9 +37,12 @@ import { classify, type AutomationTaskView } from "@/features/integrations/tasks
 import { buildRaisedNotice, companyBaseUrl, deliverRaisedNotice } from "@/server/notify-n8n";
 import { parseSeed } from "@/features/demo/parse";
 import type { EventPayload } from "@/features/cases/events";
-import { companyUrl } from "@/features/tenant/urls";
+import { companyUrl, dashboardUrl, landingUrl } from "@/features/tenant/urls";
+import { DEMO_COMPANIES } from "@/features/tenant/demo-companies";
 import { readEdit, readReply, validateEdit, validateReply, type Reply, type ReplyVia } from "@/features/admin/requests";
 import { sendMail } from "@/server/mail";
+import { secureCookies } from "@/server/issue-session";
+import { clientKey, forgive, throttle } from "@/server/throttle";
 import type { Role } from "@/config/roles";
 
 // The row shapes live in features/admin/rows.ts, next to the demo rows that mirror them.
@@ -47,16 +50,36 @@ export type { CompanyRow, PilotRequestRow };
 
 const ADMIN_TTL_SECONDS = 8 * 60 * 60;
 
+/** Compared as digests, so neither the code's content nor its length leaks through timing. */
 function codeMatches(given: string, expected: string): boolean {
-  const a = Buffer.from(given);
-  const b = Buffer.from(expected);
-  return a.length === b.length && timingSafeEqual(a, b);
+  const digest = (v: string) => createHash("sha256").update(v.normalize("NFKC")).digest();
+  return timingSafeEqual(digest(given), digest(expected));
+}
+
+// The admin cookie is stateless (signed, 8 h), so deleting it only logs out THIS browser. Logging
+// out also moves this watermark: every admin cookie issued before it stops working here, in this
+// process - a copied cookie included. In memory on purpose (one box, one process); a restart
+// clears it, which the 8 h expiry still bounds.
+const adminRevocation = globalThis as unknown as { __nextupAdminRevokedAt?: number };
+
+/** When the cookie was issued, read back from its (already verified) expiry. */
+function issuedAt(raw: string): number | null {
+  try {
+    const payload = JSON.parse(Buffer.from(raw.slice(0, raw.indexOf(".")), "base64url").toString("utf8"));
+    return typeof payload.exp === "number" ? payload.exp - ADMIN_TTL_SECONDS : null;
+  } catch {
+    return null;
+  }
 }
 
 export async function isAdmin(): Promise<boolean> {
   const secret = process.env.AUTH_SECRET;
   if (!secret) return false;
-  return verifyAdmin((await cookies()).get(ADMIN_COOKIE)?.value, secret);
+  const raw = (await cookies()).get(ADMIN_COOKIE)?.value;
+  if (!raw || !verifyAdmin(raw, secret)) return false;
+  const revokedAt = adminRevocation.__nextupAdminRevokedAt;
+  const iat = issuedAt(raw);
+  return revokedAt === undefined || (iat !== null && iat >= revokedAt);
 }
 
 export type AdminLoginState = { error?: string };
@@ -66,14 +89,25 @@ export async function adminSignIn(_prev: AdminLoginState, form: FormData): Promi
   const secret = process.env.AUTH_SECRET;
   if (!expected || !secret) return { error: "ADMIN_ACCESS_CODE and AUTH_SECRET must be set on the server." };
 
-  const given = String(form.get("code") ?? "");
-  if (!given || !codeMatches(given, expected)) return { error: "That is not the admin code." };
+  // The code opens everything, so this is the tightest door: 5 tries per address per 15 min.
+  const who = await clientKey();
+  const blocked = throttle("adminLogin", who);
+  if (blocked) return { error: blocked };
 
+  const given = String(form.get("code") ?? "");
+  if (!given || !codeMatches(given, expected)) {
+    console.warn(`[admin] wrong admin code from ${who}`);
+    return { error: "That is not the admin code." };
+  }
+  forgive("adminLogin", who);
+
+  // strict: the admin area is never entered from a link on another site, so the cookie never
+  // needs to travel on one - which also takes cross-site request forgery off the table.
   (await cookies()).set(ADMIN_COOKIE, signAdmin(Math.floor(Date.now() / 1000) + ADMIN_TTL_SECONDS, secret), {
     httpOnly: true,
-    sameSite: "lax",
+    sameSite: "strict",
     path: "/",
-    secure: process.env.COOKIE_SECURE === "true",
+    secure: secureCookies(),
     maxAge: ADMIN_TTL_SECONDS,
   });
   // In subdomain mode the admin surface is the host root, so adminHome() is "" - and redirect("")
@@ -81,8 +115,17 @@ export async function adminSignIn(_prev: AdminLoginState, form: FormData): Promi
   redirect(adminHome() || "/");
 }
 
-export async function adminSignOut() {
+/**
+ * Logs out this browser, and every other admin cookie issued up to now (see adminRevocation).
+ * Leaving the admin area through the header's "Landing page" / "Dashboard" also logs out: `to`
+ * names where to go next. A fixed key, never a URL, so this cannot become an open redirect.
+ */
+export async function adminSignOut(form?: FormData) {
+  adminRevocation.__nextupAdminRevokedAt = Math.floor(Date.now() / 1000);
   (await cookies()).delete(ADMIN_COOKIE);
+  const to = form?.get("to");
+  if (to === "landing") redirect(landingUrl());
+  if (to === "dashboard") redirect(dashboardUrl(DEMO_COMPANIES[0].slug));
   redirect(adminHome() + "/login");
 }
 
@@ -124,6 +167,9 @@ export async function createCompanyAction(_prev: CreateState, form: FormData): P
     template: form.get("template") === "empty" ? "empty" : "demo",
     people: parsePeople(form),
   };
+  // Demo (made-up people, demo tools on) or sandbox (real people, locked down). Anything else -
+  // a stale form, a hand-made POST - is a demo, never silently a later stage.
+  const stage = form.get("stage") === "sandbox" ? "sandbox" : "demo";
 
   const problems = validateNewCompany(input);
   if (problems.length) return { status: "error", problems: problems.map((p) => p.message) };
@@ -141,7 +187,7 @@ export async function createCompanyAction(_prev: CreateState, form: FormData): P
       slug: input.slug,
       name: input.name,
       mark: markFor(input),
-      stage: "demo",
+      stage,
       accessCodeHash: hashAccessCode(accessCode),
       seedJson: toSeedJson(seed) as object,
       config: { create: {} },
@@ -552,8 +598,16 @@ export async function setCompanyStageAction(_prev: StageState, form: FormData): 
   const stage = String(form.get("stage") ?? "");
   if (!isStage(stage)) return { slug, error: `"${stage}" is not one of ${STAGES.join(", ")}.` };
 
-  const { count } = await getDb().company.updateMany({ where: { slug }, data: { stage } });
-  if (count === 0) return { slug, error: "No such company." };
+  const current = await getDb().company.findUnique({ where: { slug }, select: { stage: true } });
+  if (!current) return { slug, error: "No such company." };
+  if (!canMoveStage(current.stage, stage)) {
+    return {
+      slug,
+      error: `${slug} holds real people. Moving it back to demo would switch the reset and "become someone else" tools back on over their cases - create a separate demo company instead.`,
+    };
+  }
+
+  await getDb().company.update({ where: { slug }, data: { stage } });
 
   revalidatePath("/admin", "layout");
   revalidatePath("/", "layout");

@@ -14,6 +14,7 @@ import { seedFor } from "@/features/demo";
 import { getViewerFor } from "@/features/auth/session";
 import { loadLogForSlug } from "@/lib/db/events";
 import { hasDatabase, orDemo } from "@/lib/db/client";
+import { policyFor } from "@/features/admin/stages";
 import { DemoProvider, type ViewerInfo } from "@/components/dashboard/DemoProvider";
 import { AppShell } from "@/components/shell/AppShell";
 
@@ -52,12 +53,18 @@ export default async function AppLayout({
       }
     : null;
 
+  // A demo company's people are ours, and the dev panel needs all of them to switch between. A
+  // real company's staff list and addresses stay on the server: the browser gets the viewer only.
+  const demoTools = policyFor(tenant.stage ?? "demo").switchPerson;
+  const people = demoTools ? tenant.users : tenant.users.filter((u) => u.id === viewer?.userId);
+
   return (
     <DemoProvider
       tenant={{
         slug: tenant.slug,
         name: tenant.name,
-        users: tenant.users.map((u) => ({ id: u.id, name: u.name, email: u.email, role: u.role })),
+        users: people.map((u) => ({ id: u.id, name: u.name, email: u.email, role: u.role })),
+        demoTools,
       }}
       seed={seed}
       initialLog={initialLog ?? undefined}
