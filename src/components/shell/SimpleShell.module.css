@@ -51,7 +51,7 @@
   .logo { height: 28px; }
   .nav { justify-self: center; }
   .navItem { padding: 7px 12px; font-size: 13px; }
-  .me { width: min(290px, calc(100vw - 32px)); }
+  .me { width: min(290px, calc(var(--nh-screen-w) - 32px)); }
 }
 /* Small phones: three places (manager, leader) plus the wordmark and the avatar must fit in 320-420px. */
 @media (max-width: 420px) {

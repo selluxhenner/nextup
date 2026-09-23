@@ -228,7 +228,7 @@
   .line { align-items: flex-start; }
   .field { min-height: calc(2.8em + 4px); padding-top: 4px; } /* two lines, so the whole placeholder shows next to the idea/problem switch */
   .pill { padding: 6px 10px; font-size: 13px; }
-  .picker { width: min(296px, calc(100vw - 48px)); }
+  .picker { width: min(296px, calc(var(--nh-screen-w) - 48px)); }
   .state:not([data-on="true"]) { display: none; } /* "How it works" stacks tall here; each state takes its own height */
   .sendWrap { justify-content: flex-end; } /* keeps its place next to the pills; right-aligned if it has to wrap */
 }
