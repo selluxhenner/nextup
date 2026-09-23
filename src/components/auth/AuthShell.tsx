@@ -2,12 +2,38 @@
 import Image from "next/image";
 import Link from "next/link";
 import { SITE } from "@/config/site";
+import { SiteHeader } from "@/components/marketing/SiteHeader";
 import { Ground } from "@/components/shell/Ground";
 import styles from "./AuthShell.module.css";
 
-type Props = { side: React.ReactNode; children: React.ReactNode };
+type Props = { side: React.ReactNode; children: React.ReactNode; art?: "hand" };
 
-export function AuthShell({ side, children }: Props) {
+export function AuthShell({ side, children, art }: Props) {
+  if (art === "hand") {
+    return (
+      <div className={`${styles.shell} ${styles.artShell}`}>
+        <Ground />
+        <SiteHeader onLoginPage />
+        <section className={styles.authPanel}>
+          <aside className={styles.art}>
+            <Image
+              className={styles.hand}
+              src="/brand/login-hand.png"
+              alt=""
+              fill
+              sizes="(max-width: 860px) 0px, 58vw"
+              priority
+            />
+            <div className={`${styles.sideBody} ${styles.artContent}`}>{side}</div>
+          </aside>
+          <main className={styles.artMain}>
+            <div className={`${styles.card} ${styles.artCard}`}>{children}</div>
+          </main>
+        </section>
+      </div>
+    );
+  }
+
   return (
     <div className={styles.shell}>
       <Ground />
