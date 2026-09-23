@@ -5,7 +5,7 @@
 // the day the app runs on more than one process - the rules below do not change.
 //
 // Fixed windows, not sliding: a guesser gets at most 2N tries across a window boundary, which is
-// irrelevant against a 32-bit access code and costs nothing to reason about.
+// irrelevant against a ~59-bit personal login code and costs nothing to reason about.
 
 export type Rule = { limit: number; windowMs: number };
 

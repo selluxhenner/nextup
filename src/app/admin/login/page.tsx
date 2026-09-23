@@ -19,7 +19,7 @@ export default async function AdminLoginPage() {
   return (
     <section className={styles.card}>
       <h1>Admin</h1>
-      <p className="nh-hint">Add a company, rotate its access code, or remove it.</p>
+      <p className="nh-hint">Add a company, hand out its people&apos;s login codes, or remove it.</p>
       <AdminLoginForm demoCode={demoCode()} />
     </section>
   );

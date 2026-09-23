@@ -5,7 +5,7 @@
 // trace in prose. These rows fill it with the same demo company the dashboard runs on, so the
 // screen is complete and the page says plainly, once, that this is not the real database.
 //
-// Nothing here is writable: creating, rotating and deleting all need Postgres. The page hides
+// Nothing here is writable: creating, issuing codes and deleting all need Postgres. The page hides
 // those controls in demo mode rather than offering buttons that answer with an error.
 import { SEED } from "@/features/demo/seed";
 import { DEMO_COMPANIES } from "@/features/tenant/demo-companies";
@@ -34,6 +34,16 @@ export function demoCompanies(): CompanyRow[] {
     events: c.slug === "acme" ? seedEventCount() : 0,
     url: companyUrl(c.slug),
     createdAt: daysAgo(42 + i),
+    entraTenantId: null,
+    microsoftCallback: `${companyUrl(c.slug)}/login/microsoft/callback`,
+    persons: c.users.map((u) => ({
+      id: u.id,
+      name: u.name,
+      email: u.email,
+      role: u.role,
+      codeIssuedAt: null,
+      microsoft: false,
+    })),
   }));
 }
 
