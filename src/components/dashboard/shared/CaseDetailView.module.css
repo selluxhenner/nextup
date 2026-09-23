@@ -95,7 +95,7 @@
 .shot:hover { border-color: var(--nh-ink-2); }
 .shotsGone { margin-top: 8px; font-size: 11px; color: var(--nh-on-dark-mute); font-style: italic; }
 .lightbox { position: fixed; inset: 0; z-index: 85; background: rgb(20 20 20 / 0.86); display: grid; place-items: center; padding: 24px 24px 64px; cursor: zoom-out; outline: 0; }
-.lightbox img { max-width: min(calc(100vw - 48px), 1400px); max-height: calc(100dvh - 88px); width: auto; height: auto; border-radius: var(--nh-r-sm); box-shadow: 0 20px 60px rgb(0 0 0 / 0.5); cursor: default; background: #fff; }
+.lightbox img { max-width: min(calc(var(--nh-screen-w) - 48px), 1400px); max-height: calc(var(--nh-screen-h) - 88px); width: auto; height: auto; border-radius: var(--nh-r-sm); box-shadow: 0 20px 60px rgb(0 0 0 / 0.5); cursor: default; background: #fff; }
 .lightboxBar { position: fixed; left: 0; right: 0; bottom: 16px; display: flex; justify-content: center; align-items: center; gap: 14px; color: #fff; font-size: 12.5px; }
 .lightboxBar button { border: 1px solid rgb(255 255 255 / 0.4); background: rgb(255 255 255 / 0.1); color: #fff; border-radius: 999px; padding: 5px 12px; font: inherit; font-weight: 600; cursor: pointer; }
 .lightboxBar button:hover { background: rgb(255 255 255 / 0.22); }

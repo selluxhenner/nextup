@@ -1,4 +1,4 @@
-.shell { min-height: 100dvh; display: grid; grid-template-columns: minmax(300px, 5fr) 7fr; } /* the blue Ground paints the surface */
+.shell { min-height: var(--nh-screen-h); display: grid; grid-template-columns: minmax(300px, 5fr) 7fr; } /* the blue Ground paints the surface */
 
 .side { background: var(--nh-dark); color: var(--nh-on-dark); padding: 28px 36px; display: flex; flex-direction: column; gap: 32px; }
 .logo { display: flex; align-items: center; align-self: flex-start; line-height: 0; }
@@ -36,8 +36,8 @@
 }
 
 .authPanel {
-  min-height: calc(100dvh - clamp(40px, 6vw, 80px));
-  margin: clamp(20px, 3vw, 40px) clamp(20px, 3vw, 40px) clamp(20px, 3vw, 40px) 0;
+  min-height: calc(var(--nh-screen-h) - 124px);
+  margin: 20px clamp(20px, 3vw, 40px) 40px 0;
   display: grid;
   grid-template-columns: minmax(0, 58%) minmax(420px, 42%);
   align-items: stretch;

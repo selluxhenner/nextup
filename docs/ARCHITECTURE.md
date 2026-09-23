@@ -53,7 +53,7 @@ api/                   route handlers (health; auth in Phase 2)
   One component per file; a component's styles sit next to it as `Name.module.css`.
 - **Styling:** tokens in `src/styles/tokens.css`; shared primitives as global `nh-*` classes in
   `globals.css` (buttons, fields, eyebrow); everything else CSS Modules. No inline style objects
-  beyond a one-off. No CSS framework.
+  beyond a one-off. No CSS framework. Every screen at 100% zoom: the rules are in `docs/RESPONSIVE.md`.
 - **Server first:** pages and layouts are server components. Add `"use client"` only to the
   leaf that needs state or events, never to a page.
 - **Params are async:** `const { company } = await params;` (Next 15+).
