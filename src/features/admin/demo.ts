@@ -84,12 +84,7 @@ export function demoPilotRequests(): PilotRequestRow[] {
           to: "a.fuchs@example.com",
           subject: "Re: your NextUp pilot request - Fuchs Antriebstechnik",
           body:
-            "Hello A. Fuchs,
-
-The cycle times and the owner counts are measured from the case log; the savings figure is an estimate and is labelled as one.
-
-Best regards,
-The NextUp team",
+            "Hello A. Fuchs,\n\nThe cycle times and the owner counts are measured from the case log; the savings figure is an estimate and is labelled as one.\n\nBest regards,\nThe NextUp team",
           via: "smtp",
           sentAt: daysAgo(8),
         },

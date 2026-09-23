@@ -401,7 +401,7 @@ a.count[data-tone="bad"] { border-color: #f5c2bf; background: var(--nh-danger-ti
 
 .reqRow:hover { border-color: var(--nh-brand, #2563eb); }
 .reqRow:focus-visible { outline: 2px solid var(--nh-brand, #2563eb); outline-offset: 2px; }
-.reqRow[aria-current="true"] { border-color: var(--nh-brand, #2563eb); background: rgb(11 112 209 / 0.05); box-shadow: inset 3px 0 0 var(--nh-brand, #2563eb); }
+.reqRow[aria-current="true"] { border-color: var(--nh-brand, #2563eb); background: rgb(11 112 209 / 0.06); }
 .reqRow[data-handled] .rowName, .reqRow[data-handled] .reqDecision { color: var(--nh-ink-mute, #6b7280); }
 
 .reqTop { display: flex; justify-content: space-between; align-items: center; gap: 8px; }

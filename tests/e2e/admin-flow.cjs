@@ -43,6 +43,9 @@ await page.click('button[type=submit]');
 await page.waitForURL(/\/admin$/, { timeout: 15000 });
 ok("correct admin code unlocks /admin");
 
+// The create form lives on its own page since /admin became four (Overview/Requests/Companies/Connections).
+await page.goto(B + "/admin/companies");
+
 // 2. validation actually stops a bad slug
 await page.fill("#name", "Reserved Co");
 await page.fill("#slug", "admin");

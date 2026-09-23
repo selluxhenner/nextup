@@ -57,6 +57,9 @@ services:
       # In-network only; n8n is never called over the internet.
       N8N_HOOK_URL: ${N8N_HOOK_URL:-http://n8n:5678/webhook/nextup/case-raised}
       N8N_HOOK_TOKEN: ${N8N_HOOK_TOKEN:-}
+      # "Send reply" on a pilot request in /admin. mailpit catches it; point at a real relay to deliver.
+      SMTP_URL: ${SMTP_URL:-smtp://mailpit:1025}
+      MAIL_FROM: ${MAIL_FROM:-}
     depends_on:
       db:
         condition: service_healthy

@@ -1,7 +1,7 @@
-// The nav carries state, so these are the rules for when it shouts. A badge that is always there
+// The sidebar carries state, so these are the rules for when it shouts. A badge that is always there
 // is wallpaper; the point is that "3 stuck" only appears when three are stuck.
 import { describe, expect, it } from "vitest";
-import { adminNav } from "@/features/admin/nav";
+import { adminBase, adminNav, connectionProblems } from "@/features/admin/nav";
 import { nextStage, STAGES, isStage } from "@/features/admin/stages";
 import type { TaskCounts } from "@/features/integrations/tasks";
 
@@ -16,38 +16,53 @@ const counts = (over: Partial<TaskCounts> = {}): TaskCounts => ({
 const base = {
   database: "up" as const,
   openRequests: 0,
+  overdueRequests: 0,
   companies: 1,
   automation: "live" as const,
   tasks: counts({ done: 3 }),
+  mail: "up" as const,
 };
 
+const item = (facts: typeof base | Parameters<typeof adminNav>[0], id: string) => adminNav(facts).find((i) => i.id === id);
+
 describe("adminNav", () => {
-  it("is quiet when everything is fine", () => {
+  it("is four pages, and quiet when everything is fine", () => {
     const items = adminNav(base);
-    expect(items.map((i) => i.id)).toEqual(["database", "requests", "companies", "automation", "tasks"]);
+    expect(items.map((i) => i.id)).toEqual(["overview", "requests", "companies", "connections"]);
+    expect(items.map((i) => i.path)).toEqual(["", "/requests", "/companies", "/connections"]);
     expect(items.filter((i) => i.tone === "bad" || i.tone === "warn")).toEqual([]);
-    expect(items.find((i) => i.id === "database")?.badge).toBeNull();
+    expect(item(base, "connections")).toMatchObject({ badge: null, tone: "ok" });
   });
 
-  it("drops the automation sections when there is no database to read them from", () => {
-    const items = adminNav({ ...base, database: "down", automation: null, tasks: null });
-    expect(items.map((i) => i.id)).toEqual(["database", "requests", "companies"]);
-    expect(items[0]).toMatchObject({ badge: "down", tone: "bad" });
+  it("counts unanswered requests, says nothing at zero, and shouts about overdue ones", () => {
+    expect(item({ ...base, openRequests: 2 }, "requests")).toMatchObject({ badge: "2", tone: "warn" });
+    expect(item(base, "requests")?.badge).toBeNull();
+    expect(item({ ...base, openRequests: 3, overdueRequests: 1 }, "requests")).toMatchObject({ badge: "1 overdue", tone: "bad" });
   });
 
-  it("counts unanswered requests, and says nothing at zero", () => {
-    expect(adminNav({ ...base, openRequests: 2 }).find((i) => i.id === "requests")).toMatchObject({
-      badge: "2",
-      tone: "warn",
-    });
-    expect(adminNav(base).find((i) => i.id === "requests")?.badge).toBeNull();
+  it("puts the worst connection problem on the Connections badge", () => {
+    expect(item({ ...base, database: "down", automation: null, tasks: null }, "connections")).toMatchObject({ badge: "db down", tone: "bad" });
+    expect(item({ ...base, tasks: counts({ failed: 3, pending: 1 }) }, "connections")).toMatchObject({ badge: "3 stuck", tone: "bad" });
+    expect(item({ ...base, tasks: counts({ pending: 1 }) }, "connections")).toMatchObject({ badge: "1 running", tone: "warn" });
+    expect(item({ ...base, automation: "idle" }, "connections")).toMatchObject({ badge: "n8n idle", tone: "warn" });
+    expect(item({ ...base, mail: "down" }, "connections")).toMatchObject({ badge: "mail down", tone: "bad" });
   });
 
-  it("leads with stuck tasks over running ones", () => {
-    expect(adminNav({ ...base, tasks: counts({ failed: 3, pending: 1 }) }).find((i) => i.id === "tasks"))
-      .toMatchObject({ badge: "3 stuck", tone: "bad" });
-    expect(adminNav({ ...base, tasks: counts({ pending: 1 }) }).find((i) => i.id === "tasks"))
-      .toMatchObject({ badge: "1 running", tone: "warn" });
+  it("does not count mail that is simply not configured - replies fall back to a mail app", () => {
+    expect(connectionProblems({ ...base, mail: "off" })).toEqual([]);
+  });
+
+  it("lists bad before warn", () => {
+    const tones = connectionProblems({ ...base, automation: "off", mail: "down" }).map((p) => p.tone);
+    expect(tones).toEqual(["bad", "warn"]);
+  });
+});
+
+describe("adminBase", () => {
+  it("is /admin in path mode and the host root on the admin subdomain", () => {
+    expect(adminBase("path")).toBe("/admin");
+    expect(adminBase(undefined)).toBe("/admin");
+    expect(adminBase("subdomain")).toBe("");
   });
 });
 

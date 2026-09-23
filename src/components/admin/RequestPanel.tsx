@@ -4,7 +4,7 @@
 //
 // The forms submit through startTransition instead of <form action>, on purpose: React resets a
 // form after its action runs, and a mail server saying no must not cost the admin a written reply.
-import { useActionState, useEffect, useState, useTransition } from "react";
+import { useActionState, useState, useTransition } from "react";
 import {
   deletePilotRequestAction,
   markPilotRequestHandled,
@@ -74,19 +74,20 @@ export function RequestPanel({
   const [composing, setComposing] = useState(!r.handledAt && r.replies.length === 0);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
-  // A saved edit closes the form; a sent reply clears the composer for the next one.
-  useEffect(() => {
-    if (edit.saved) setEditing(false);
-  }, [edit.saved]);
-  useEffect(() => {
-    if (reply.sent) {
-      setComposing(false);
-      setSubject(replySubject(r));
-      setBody(replyDraft(r));
-    }
-    // r only matters for the fresh draft, and a new request remounts the panel (key={id}).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reply.sent]);
+  // A saved edit closes the form; a sent reply clears the composer for the next one. Done while
+  // rendering, on the change of the stamp the action returns - not in an effect.
+  const [seenSaved, setSeenSaved] = useState(edit.saved);
+  if (edit.saved !== seenSaved) {
+    setSeenSaved(edit.saved);
+    setEditing(false);
+  }
+  const [seenSent, setSeenSent] = useState(reply.sent);
+  if (reply.sent !== seenSent) {
+    setSeenSent(reply.sent);
+    setComposing(false);
+    setSubject(replySubject(r));
+    setBody(replyDraft(r));
+  }
 
   const waited = workingDaysBetween(new Date(r.createdAt), r.handledAt ? new Date(r.handledAt) : new Date());
 
