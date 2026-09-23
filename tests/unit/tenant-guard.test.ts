@@ -125,3 +125,25 @@ describe("the identifying-lookup exception", () => {
     expect(scopeViolation("ApiToken", "findUnique", { where: { hash: undefined } })).toBeInstanceOf(Error);
   });
 });
+
+describe("the admin automation read", () => {
+  // /admin is cross-company by nature, but "every company" is the caller's intention, not a
+  // property of the query: it passes the ids it already listed, and `in` still names them.
+  it("allows a groupBy pinned to a list of companies", () => {
+    expect(
+      scopeViolation("CaseEvent", "groupBy", {
+        by: ["companyId"],
+        where: { companyId: { in: ["c1", "c2"] }, source: "n8n" },
+      }),
+    ).toBeNull();
+    expect(
+      scopeViolation("ApiToken", "findMany", { where: { companyId: { in: ["c1"] }, name: "n8n" } }),
+    ).toBeNull();
+  });
+
+  it("still refuses the same read with no company at all", () => {
+    expect(
+      scopeViolation("CaseEvent", "groupBy", { by: ["companyId"], where: { source: "n8n" } }),
+    ).toBeInstanceOf(Error);
+  });
+});

@@ -47,7 +47,12 @@ export type Db = ReturnType<typeof createClient>;
 
 // Next's dev server re-evaluates modules on every edit; without this the connection pool grows
 // until Postgres refuses new clients.
-const globalForDb = globalThis as unknown as { __nextupDb?: Db; __nextupDbRetry?: NodeJS.Timeout };
+const globalForDb = globalThis as unknown as {
+  __nextupDb?: Db;
+  __nextupDbRetry?: NodeJS.Timeout;
+  __nextupDbRetryAttempt?: number;
+  __nextupDbReconnect?: Promise<boolean>;
+};
 
 export function getDb(): Db {
   if (!globalForDb.__nextupDb) globalForDb.__nextupDb = createClient();
@@ -89,10 +94,17 @@ export async function orDemo<T>(query: () => Promise<T>, fallback: () => T | Pro
 export function isConnectionError(err: unknown): boolean {
   if (!(err instanceof Error)) return false;
   if (err.name === "PrismaClientInitializationError") return true;
-  return /Can't reach database server|ECONNREFUSED|ECONNRESET|ENOTFOUND|ETIMEDOUT|Connection terminated|connection pool|no answer within/i.test(
+  // Postgres stopped while the pool still held a connection: the pg adapter reports that as a
+  // query error (P2010, "Server has closed the connection."), not as an unreachable server.
+  const kind = (err as { meta?: { driverAdapterError?: { cause?: { kind?: string } } } }).meta?.driverAdapterError
+    ?.cause?.kind;
+  if (kind && ADAPTER_CONNECTION_KINDS.has(kind)) return true;
+  return /Can't reach database server|ECONNREFUSED|ECONNRESET|ENOTFOUND|ETIMEDOUT|Connection terminated|connection pool|no answer within|Server has closed the connection|terminating connection due to administrator command/i.test(
     err.message,
   );
 }
+
+const ADAPTER_CONNECTION_KINDS = new Set(["ConnectionClosed", "DatabaseNotReachable", "SocketTimeout"]);
 
 function ping(): Promise<unknown> {
   const timeout = new Promise<never>((_, reject) =>
@@ -108,31 +120,67 @@ function goDown(err: unknown) {
   const where = describe(process.env.DATABASE_URL);
   const why = reason(err);
   markDatabaseUnreachable(`nothing answers at ${where} (${why})`);
-  void globalForDb.__nextupDb?.$disconnect().catch(() => {});
-  globalForDb.__nextupDb = undefined;
+  dropPool();
   console.warn(
     `[nextup] DATABASE_URL is set but nothing answers at ${where} (${why}).\n` +
       "[nextup] Running on the built-in acme demo instead: /acme works, /admin and login are off.\n" +
       "[nextup] Start Postgres (docker start nextup-dev-db) and it is picked up again within 30 s, or remove DATABASE_URL.",
   );
-  globalForDb.__nextupDbRetry = setTimeout(retry, RETRY_MS);
+  globalForDb.__nextupDbRetryAttempt = 0;
+  scheduleRetry();
+}
+
+// Quick at first - the usual outage is Docker Desktop restarting, which takes seconds - then
+// settling at 30 s so a database that is really gone costs one refused connection per half minute.
+const RETRY_MS = [2_000, 5_000, 10_000, 20_000, 30_000];
+
+function scheduleRetry() {
+  const attempt = globalForDb.__nextupDbRetryAttempt ?? 0;
+  globalForDb.__nextupDbRetryAttempt = attempt + 1;
+  globalForDb.__nextupDbRetry = setTimeout(() => {
+    globalForDb.__nextupDbRetry = undefined;
+    void reconnectDatabase();
+  }, RETRY_MS[Math.min(attempt, RETRY_MS.length - 1)]);
   globalForDb.__nextupDbRetry.unref();
 }
 
-const RETRY_MS = 30_000;
+/**
+ * Try to leave demo mode now, instead of waiting for the background retry. /admin calls this on
+ * every render while the database is down, so a reload is all it takes once Postgres is back.
+ * Concurrent callers share one ping. Returns whether the database is answering.
+ */
+export function reconnectDatabase(): Promise<boolean> {
+  if (hasDatabase()) return Promise.resolve(true);
+  if (!process.env.DATABASE_URL) return Promise.resolve(false);
+  globalForDb.__nextupDbReconnect ??= attemptReconnect().finally(() => {
+    globalForDb.__nextupDbReconnect = undefined;
+  });
+  return globalForDb.__nextupDbReconnect;
+}
 
-async function retry() {
-  globalForDb.__nextupDbRetry = undefined;
+async function attemptReconnect(): Promise<boolean> {
   try {
     await ping();
-    markDatabaseReachable();
-    console.info(`[nextup] Postgres answers again at ${describe(process.env.DATABASE_URL)} - leaving demo mode.`);
-  } catch {
-    void globalForDb.__nextupDb?.$disconnect().catch(() => {});
-    globalForDb.__nextupDb = undefined;
-    globalForDb.__nextupDbRetry = setTimeout(retry, RETRY_MS);
-    globalForDb.__nextupDbRetry.unref();
+  } catch (err) {
+    dropPool();
+    // Keep the reason current: "connection refused" and "timed out" point at different fixes.
+    markDatabaseUnreachable(`nothing answers at ${describe(process.env.DATABASE_URL)} (${reason(err)})`);
+    if (!globalForDb.__nextupDbRetry) scheduleRetry();
+    return false;
   }
+  // Clear the pending retry too: goDown() treats a scheduled retry as "already down" and would
+  // stay silent - and leave the flag unset - the next time Postgres goes away.
+  clearTimeout(globalForDb.__nextupDbRetry);
+  globalForDb.__nextupDbRetry = undefined;
+  globalForDb.__nextupDbRetryAttempt = 0;
+  markDatabaseReachable();
+  console.info(`[nextup] Postgres answers again at ${describe(process.env.DATABASE_URL)} - leaving demo mode.`);
+  return true;
+}
+
+function dropPool() {
+  void globalForDb.__nextupDb?.$disconnect().catch(() => {});
+  globalForDb.__nextupDb = undefined;
 }
 
 /** The line that says what went wrong - Prisma puts "Invalid invocation:" above it. */

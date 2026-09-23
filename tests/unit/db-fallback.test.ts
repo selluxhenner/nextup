@@ -42,6 +42,16 @@ describe("isConnectionError", () => {
     expect(isConnectionError(Object.assign(new Error("x"), { name: "PrismaClientInitializationError" }))).toBe(true);
   });
 
+  it("recognises a pooled connection that Postgres closed when it stopped", () => {
+    // What @prisma/adapter-pg throws for `docker stop` while the pool is warm (P2010).
+    const closed = Object.assign(new Error("Raw query failed. Code: `N/A`. Message: `Server has closed the connection.`"), {
+      code: "P2010",
+      meta: { driverAdapterError: { cause: { kind: "ConnectionClosed" } } },
+    });
+    expect(isConnectionError(closed)).toBe(true);
+    expect(isConnectionError(Object.assign(new Error("x"), { meta: { driverAdapterError: { cause: { kind: "ConnectionClosed" } } } }))).toBe(true);
+  });
+
   it("leaves a wrong query alone", () => {
     expect(isConnectionError(new Error("Unknown argument `foo`"))).toBe(false);
     expect(isConnectionError("not even an error")).toBe(false);

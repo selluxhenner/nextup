@@ -11,10 +11,17 @@ type PersonDraft = { key: number; name: string; email: string; role: string; dep
 
 const blank = (key: number, role = "member"): PersonDraft => ({ key, name: "", email: "", role, dept: "" });
 
-export function CreateCompany() {
+/** Pre-fill from a pilot request (/admin/companies?from=<id>): its company, and its sender as manager. */
+export type CreateInitial = { name: string; personName: string; personEmail: string };
+
+export function CreateCompany({ initial }: { initial?: CreateInitial }) {
   const [state, act, pending] = useActionState<CreateState, FormData>(createCompanyAction, { status: "idle" });
-  const [slug, setSlug] = useState("");
-  const [people, setPeople] = useState<PersonDraft[]>([blank(1, "manager"), blank(2, "leader"), blank(3, "member")]);
+  const [slug, setSlug] = useState(() => (initial ? normaliseSlug(initial.name) : ""));
+  const [people, setPeople] = useState<PersonDraft[]>(() => [
+    initial ? { ...blank(1, "manager"), name: initial.personName, email: initial.personEmail } : blank(1, "manager"),
+    blank(2, "leader"),
+    blank(3, "member"),
+  ]);
   const [nextKey, setNextKey] = useState(4);
 
   if (state.status === "created") {
@@ -38,7 +45,7 @@ export function CreateCompany() {
     <form action={act} className={styles.grid} autoComplete="off">
       <div className={styles.two}>
         <Field id="name" label="Company name">
-          <input className="nh-input" id="name" name="name" required placeholder="Bosch Rexroth AG" />
+          <input className="nh-input" id="name" name="name" required placeholder="Bosch Rexroth AG" defaultValue={initial?.name} />
         </Field>
         <Field id="slug" label="Slug (the subdomain)">
           <input

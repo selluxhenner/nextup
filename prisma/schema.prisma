@@ -171,5 +171,25 @@ model PilotRequest {
   createdAt DateTime  @default(now())
   handledAt DateTime?
 
+  // Ours, never shown to the person who wrote in: what we know, what was agreed on the phone.
+  notes   String       @default("")
+  replies PilotReply[]
+
   @@index([createdAt])
+}
+
+// One answer sent (or logged as sent) from /admin/requests. Kept so the panel shows the thread,
+// not just a "replied" timestamp; goes with its request on delete.
+model PilotReply {
+  id        String       @id @default(cuid())
+  requestId String
+  request   PilotRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  to      String
+  subject String
+  body    String
+  via     String // smtp | manual - features/admin/reply.ts
+  sentAt  DateTime @default(now())
+
+  @@index([requestId, sentAt])
 }
