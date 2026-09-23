@@ -5,6 +5,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useDemo } from "@/components/dashboard/DemoProvider";
+import { PageSkeleton } from "@/components/ui/Skeleton";
 import { scopedProblems, sortProblems, type ProblemSort } from "@/components/dashboard/derive";
 import { Bars, Empty, Pill, Quote, Tile, ownerTone, statusTone, trendTone } from "@/components/dashboard/shared/primitives";
 import { FilterStrip, ListTools, ViewHead, type Chip } from "@/components/dashboard/shared/ViewHead";
@@ -26,7 +27,7 @@ export function ProblemsView({ initialId }: { initialId?: string }) {
   const [sort, setSort] = useState<ProblemSort>("people");
   const [trend, setTrend] = useState("All");
   const [owner, setOwner] = useState("All");
-  if (!ready) return <div className={ui.loading} />;
+  if (!ready) return <PageSkeleton />;
 
   const toks = tokens(q), hasQuery = toks.length > 0;
   const scope = scopedProblems(ctx);

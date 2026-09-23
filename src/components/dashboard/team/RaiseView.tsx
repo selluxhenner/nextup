@@ -10,6 +10,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { EvalOrb } from "@/components/dashboard/team/EvalOrb";
+import { PageSkeleton } from "@/components/ui/Skeleton";
 import { SITE } from "@/config/site";
 import type { CaseKind } from "@/features/cases/events";
 import { evaluate, type Evaluation } from "@/features/evaluate";
@@ -87,7 +88,7 @@ export function RaiseView() {
     return () => { document.removeEventListener("mousedown", onDown); document.removeEventListener("keydown", onKey); };
   }, [pickOpen]);
 
-  if (!ready) return <div className={styles.loading} />;
+  if (!ready) return <PageSkeleton />;
 
   const who = persona.who;
   const current = KINDS.find((k) => k.id === kind) ?? KINDS[0];

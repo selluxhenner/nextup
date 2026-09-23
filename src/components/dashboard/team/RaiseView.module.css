@@ -18,7 +18,6 @@
   --ring-prev: linear-gradient(110deg, #f0c23a 0%, #f7dd93 30%, #fff3d0 52%, #f2cb55 78%, #e6a919 100%);
   --aura: radial-gradient(60% 120% at 22% 50%, rgb(201 58 45 / 0.24) 0%, rgb(201 58 45 / 0) 72%), radial-gradient(60% 120% at 78% 50%, rgb(232 105 92 / 0.24) 0%, rgb(232 105 92 / 0) 72%);
 }
-.loading { min-height: 40vh; }
 
 .title { margin: 0; text-align: center; font-size: clamp(26px, 3.2vw, 42px); font-weight: 600; letter-spacing: -0.02em; color: var(--nh-ink); }
 

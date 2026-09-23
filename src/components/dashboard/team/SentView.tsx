@@ -5,6 +5,7 @@
 // mineRow() / cosignRow() - nothing here is estimated or stored.
 import Link from "next/link";
 import { useDemo } from "@/components/dashboard/DemoProvider";
+import { PageSkeleton } from "@/components/ui/Skeleton";
 import { mineRows } from "@/components/dashboard/derive";
 import { Pill, statusTone } from "@/components/dashboard/shared/primitives";
 import type { MineRow, MineStatus } from "@/features/cases/rows";
@@ -20,7 +21,7 @@ const STATUS_LABEL: Partial<Record<MineStatus, string>> = {
 export function SentView() {
   const ctx = useDemo();
   const { seed, ready, href, openSheet } = ctx;
-  if (!ready) return <div className={styles.loading} />;
+  if (!ready) return <PageSkeleton />;
 
   const P = seed.promiseDays;
   const mine = mineRows(ctx);

@@ -3,6 +3,7 @@
 // Port of the OVERVIEW block in legacy/demo/index.html.
 import Link from "next/link";
 import { useDemo } from "@/components/dashboard/DemoProvider";
+import { PageSkeleton } from "@/components/ui/Skeleton";
 import { criteriaTags, scopedIdeas, scopedProblems, sortIdeas, sortProblems } from "@/components/dashboard/derive";
 import { Bars, Pill, ownerTone, statusTone, trendTone } from "@/components/dashboard/shared/primitives";
 import { ViewHead } from "@/components/dashboard/shared/ViewHead";
@@ -14,7 +15,7 @@ import styles from "./OverviewView.module.css";
 export function OverviewView() {
   const ctx = useDemo();
   const { seed, S, D, N, log, demo, href, deptName, ready } = ctx;
-  if (!ready) return <div className={ui.loading} />;
+  if (!ready) return <PageSkeleton />;
   const P = seed.promiseDays, M = seed.metrics, L = seed.ledger;
   const dash = (v: string) => (demo ? v : "—");
   const was = (str: string) => parseInt(String(str).replace(/[^\d]/g, ""), 10);
