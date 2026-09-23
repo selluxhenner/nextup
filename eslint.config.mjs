@@ -12,13 +12,11 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
-    "legacy/**",
     ".github/ci/**",
     // Collaborator drop-zone (gitignored): mockups, Figma exports, screenshots.
     "uploads/**",
-    // Generated dc-runtime artifacts at the repo root, the pair to NextUp.dc.html. Same reason
-    // legacy/** is ignored - the file says "GENERATED ... do not edit" on line 1 and nothing in
-    // src/ references it. Without this, `npm run lint` fails on main. (Kevin: flagged in the PR.)
+    // Generated dc-runtime artifacts at the repo root, the pair to NextUp.dc.html. Ignored because the
+    // file says "GENERATED ... do not edit" on line 1 and nothing in src/ references it. Without this, `npm run lint` fails on main. (Kevin: flagged in the PR.)
     "support.js",
     "NextUp.dc.html",
   ]),

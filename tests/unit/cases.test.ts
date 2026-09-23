@@ -1,4 +1,4 @@
-// Reducer tests, ported from legacy/.github/ci/store.test.cjs. These protect the one piece of
+// Reducer tests, ported from the legacy demo's store.test.cjs. These protect the one piece of
 // code every button depends on. Add a case here whenever an event type or a derived field changes.
 import { describe, expect, it } from "vitest";
 import { appendEvent, emptyLog, type CaseEvent, type CaseEventType, type EventLog, type EventPayload } from "@/features/cases/events";
