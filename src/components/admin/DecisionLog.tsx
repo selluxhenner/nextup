@@ -90,7 +90,7 @@ export function DecisionLog({ rows, summary: s, routeNames, exportHref }: Props)
                       <span className={styles.sub}>{r.source === "unrecorded" ? "not recorded" : r.version}</span>
                     </td>
                     <td>{route(r.company, r.chosen)}</td>
-                    <td><span className={styles.pill} data-v={r.verdict}>{r.verdict}</span></td>
+                    <td><span className={styles.verdictPill} data-v={r.verdict}>{r.verdict}</span></td>
                     <td>{r.handoffs ? r.handoffs + "×" : "-"}</td>
                     <td className={styles.nowrap}>{r.noticeAt ? "written back" : "-"}</td>
                   </tr>

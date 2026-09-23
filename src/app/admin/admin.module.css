@@ -589,7 +589,8 @@ a.count[data-tone="bad"] { border-color: #f5c2bf; background: var(--nh-danger-ti
 .tileValue { font-size: 1.4rem; font-weight: 600; }
 .tileLabel { font-size: 0.8rem; color: var(--nh-ink-mute, #6b7280); }
 
-.pill {
+/* Its own class: .pill above belongs to the Connections task list. */
+.verdictPill {
   display: inline-block;
   font-size: 0.75rem;
   padding: 2px 8px;
@@ -597,9 +598,9 @@ a.count[data-tone="bad"] { border-color: #f5c2bf; background: var(--nh-danger-ti
   border: 1px solid var(--nh-line);
   white-space: nowrap;
 }
-.pill[data-v="agreed"] { border-color: #86efac; background: #f0fdf4; color: #166534; }
-.pill[data-v="overridden"], .pill[data-v="handed elsewhere"] { border-color: #fca5a5; background: #fef2f2; color: #991b1b; }
-.pill[data-v="no route"] { border-color: #fde68a; background: #fffbeb; color: #92400e; }
+.verdictPill[data-v="agreed"] { border-color: #86efac; background: #f0fdf4; color: #166534; }
+.verdictPill[data-v="overridden"], .verdictPill[data-v="handed elsewhere"] { border-color: #fca5a5; background: #fef2f2; color: #991b1b; }
+.verdictPill[data-v="no route"] { border-color: #fde68a; background: #fffbeb; color: #92400e; }
 
 .brief {
   margin: 12px 0 0;
