@@ -39,6 +39,8 @@ export default async function CompanyLoginPage({ params, searchParams }: Props) 
 
   return (
     <AuthShell
+      art="hand"
+      backHref="/login"
       side={
         <>
           <p className="nh-eyebrow">This week at {short}</p>
@@ -50,7 +52,6 @@ export default async function CompanyLoginPage({ params, searchParams }: Props) 
       <div className={styles.company}>
         <span className={styles.mark} aria-hidden="true">{tenant.mark}</span>
         <div>
-          <p className="nh-eyebrow">Step 2 of 2</p>
           <strong>{tenant.name}</strong>
         </div>
         <Link className={styles.switch} href="/login">Not your company?</Link>
