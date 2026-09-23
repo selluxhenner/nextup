@@ -28,10 +28,11 @@ describe("describeEnvironment", () => {
     expect(text).not.toContain(good.ADMIN_ACCESS_CODE);
   });
 
-  it("warns about demo shortcuts and insecure cookies over https", () => {
+  it("warns about demo shortcuts; https turns secure cookies on by itself", () => {
     expect(row({ ...good, LOGIN_DEMO_FILL: "true" }, "Login demo fill")?.tone).toBe("warn");
     expect(row({ ...good, ADMIN_DEMO_FILL: "true" }, "Admin demo fill")?.tone).toBe("warn");
-    expect(row({ ...good, PUBLIC_SCHEME: "https" }, "Secure cookies")?.tone).toBe("warn");
+    // secureCookies() in src/server/issue-session.ts: PUBLIC_SCHEME=https is enough.
+    expect(row({ ...good, PUBLIC_SCHEME: "https" }, "Secure cookies")?.value).toMatch(/^on/);
     expect(row({ ...good, PUBLIC_SCHEME: "https", COOKIE_SECURE: "true" }, "Secure cookies")?.tone).toBe("ok");
   });
 });

@@ -16,6 +16,7 @@ import {
   type PilotRequest,
 } from "@/features/pilot/request";
 import { getDb, hasDatabase } from "@/lib/db/client";
+import { clientKey, throttle } from "@/server/throttle";
 
 export type PilotState =
   | { status: "idle" }
@@ -38,6 +39,10 @@ export async function requestPilot(_prev: PilotState, form: FormData): Promise<P
   }
 
   if (!hasDatabase()) return { status: "mailto", href: pilotMailto(LEGAL.email, values) };
+
+  // A public form that writes rows: a handful per address per hour, so a script cannot fill the
+  // table. "failed" keeps what they typed and offers the mail address - a real person is not stuck.
+  if (throttle("pilotRequest", await clientKey())) return { status: "failed", values };
 
   try {
     const row = await getDb().pilotRequest.create({

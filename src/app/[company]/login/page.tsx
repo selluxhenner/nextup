@@ -11,6 +11,7 @@ import { findTenant } from "@/features/tenant";
 import { hasDatabase } from "@/lib/db/client";
 import { SITE } from "@/config/site";
 import { demoCodeFor } from "@/server/demo-login";
+import { policyFor } from "@/features/admin/stages";
 import styles from "@/components/auth/forms.module.css";
 
 type Props = { params: Promise<{ company: string }>; searchParams: Promise<{ next?: string }> };
@@ -49,7 +50,7 @@ export default async function CompanyLoginPage({ params, searchParams }: Props) 
       {hasDatabase() ? (
         <>
           <AuthTitle title="Welcome back" sub={`Log in with your ${short} account.`} />
-          <CompanyLoginForm slug={tenant.slug} short={short} next={next} demoCode={demoCodeFor(tenant.slug)} />
+          <CompanyLoginForm slug={tenant.slug} short={short} next={next} demoCode={policyFor(tenant.stage ?? "demo").demoLogin ? demoCodeFor(tenant.slug) : null} />
         </>
       ) : (
         // No database, so there is no one to sign in as: a laptop without Postgres. The demo

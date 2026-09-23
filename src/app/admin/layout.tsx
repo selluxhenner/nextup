@@ -8,7 +8,7 @@ import type { Metadata } from "next";
 import { DEMO_COMPANIES } from "@/features/tenant/demo-companies";
 import { dashboardUrl, landingUrl } from "@/features/tenant/urls";
 import { adminBase } from "@/features/admin/nav";
-import { isAdmin } from "@/server/actions/admin";
+import { adminSignOut, isAdmin } from "@/server/actions/admin";
 import { adminContext } from "@/server/admin-context";
 import { AdminNav } from "@/components/admin/AdminNav";
 import styles from "./admin.module.css";
@@ -31,8 +31,20 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <span className={styles.logo}>NextUp</span>
         <span className={styles.tag}>admin</span>
         <nav className={styles.barNav}>
-          <a href={landingUrl()}>Landing page</a>
-          <a href={dashboardUrl(demo)}>Dashboard</a>
+          {signedIn ? (
+            // Signed in, every way out of the admin area logs out first (adminSignOut, `to`), so
+            // an unlocked admin session is never left behind in a tab that moved on.
+            <form action={adminSignOut}>
+              <button type="submit" name="to" value="landing" className={styles.logout}>Landing page</button>
+              <button type="submit" name="to" value="dashboard" className={styles.logout}>Dashboard</button>
+              <button type="submit" className={`${styles.logout} ${styles.logoutEnd}`}>Log out</button>
+            </form>
+          ) : (
+            <>
+              <a href={landingUrl()}>Landing page</a>
+              <a href={dashboardUrl(demo)}>Dashboard</a>
+            </>
+          )}
         </nav>
       </header>
       {ctx ? (

@@ -30,9 +30,10 @@ export function describeEnvironment(env: Env): EnvRow[] {
     },
     {
       label: "Secure cookies",
-      value: env.COOKIE_SECURE === "true" ? "on" : "off",
-      tone: https && env.COOKIE_SECURE !== "true" ? "warn" : "ok",
-      hint: https && env.COOKIE_SECURE !== "true" ? "Served over https - set COOKIE_SECURE=true." : undefined,
+      // Mirrors secureCookies() in src/server/issue-session.ts: https turns it on by itself.
+      value: env.COOKIE_SECURE === "true" ? "on" : https ? "on - PUBLIC_SCHEME is https" : "off",
+      tone: "ok",
+      hint: env.COOKIE_SECURE !== "true" && !https ? "Fine on a laptop over http. Anywhere public, serve https." : undefined,
     },
     {
       label: "Admin demo fill",
@@ -42,9 +43,9 @@ export function describeEnvironment(env: Env): EnvRow[] {
     },
     {
       label: "Login demo fill",
-      value: env.LOGIN_DEMO_FILL === "true" ? "on - every company opens with the demo code" : "off",
+      value: env.LOGIN_DEMO_FILL === "true" ? "on - demo-stage companies open with the demo code" : "off",
       tone: env.LOGIN_DEMO_FILL === "true" ? "warn" : "ok",
-      hint: env.LOGIN_DEMO_FILL === "true" ? "Demo boxes only - never where real people log in." : undefined,
+      hint: env.LOGIN_DEMO_FILL === "true" ? "Sandbox, pilot and live companies ignore it - they always need their real code." : undefined,
     },
   ];
 }

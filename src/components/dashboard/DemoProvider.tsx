@@ -105,6 +105,8 @@ export type TenantInfo = {
   slug: string;
   name: string;
   users?: { id?: string; name: string; email: string; role?: Role }[];
+  /** False for a company with real people: no dev panel, and `users` is only the viewer. */
+  demoTools?: boolean;
 };
 
 /** The signed-in person. Present only in server mode. */

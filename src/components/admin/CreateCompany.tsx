@@ -67,6 +67,17 @@ export function CreateCompany({ initial }: { initial?: CreateInitial }) {
         </select>
       </Field>
 
+      <Field
+        id="stage"
+        label="Who logs in"
+        hint="Real people: login asks for their own work email, and the demo tools (switch person, reset, +1 day) are off. You can move a demo company to real later, never back."
+      >
+        <select className="nh-input" id="stage" name="stage" defaultValue="demo">
+          <option value="demo">Demo — made-up people, for sales calls and walkthroughs</option>
+          <option value="sandbox">Real people — a customer trying it out (sandbox)</option>
+        </select>
+      </Field>
+
       <fieldset className={styles.people}>
         <legend className="nh-hint">
           People who can log in. At least one manager. Names should match the seed&rsquo;s people, or
