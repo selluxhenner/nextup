@@ -29,7 +29,6 @@ export function DashboardView() {
   const { seed, D, log, persona, role, ready, href } = ctx;
   const [filter, setFilter] = useState<Filter>("all");
   const [sort, setSort] = useState<Sort>("score");
-  if (!ready) return <PageSkeleton />;
   // The ink thumb slides under the current filter: measured from the pressed chip, re-measured on resize.
   const chipsRef = useRef<HTMLDivElement>(null);
   const [thumb, setThumb] = useState<{ x: number; w: number } | null>(null);
@@ -46,7 +45,7 @@ export function DashboardView() {
     window.addEventListener("resize", measure);
     return () => { ro.disconnect(); window.removeEventListener("resize", measure); };
   }, [filter, role]);
-  if (!ready) return <div className={styles.loading} />;
+  if (!ready) return <PageSkeleton />;
 
   const who = persona.who;
   const rows = D.cases.filter((c) => visibleTo(ctx, c)).map((c) => dashboardRow(c, seed.promiseDays, who, log));
