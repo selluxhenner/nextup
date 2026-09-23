@@ -81,6 +81,11 @@ services:
       N8N_PROXY_HOPS: "1"
       GENERIC_TIMEZONE: ${TZ:-Europe/Zurich}
       N8N_DIAGNOSTICS_ENABLED: "false"
+      # n8n blocks $env inside expressions by default. The write-back node's URL is
+      # `{{ $env.NEXTUP_BASE }}/api/{{ ... }}/events`, so without this every run fails at that
+      # node with "access to env vars denied" - the owner still gets the email, the case never
+      # hears about it. The only env this container has is what is set right here.
+      N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
       # Where workflows call back to. Service name, not a public URL.
       NEXTUP_BASE: http://app:3000
     volumes:
