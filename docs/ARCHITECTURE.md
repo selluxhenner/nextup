@@ -53,7 +53,7 @@ api/                   route handlers (health; auth in Phase 2)
   One component per file; a component's styles sit next to it as `Name.module.css`.
 - **Styling:** tokens in `src/styles/tokens.css`; shared primitives as global `nh-*` classes in
   `globals.css` (buttons, fields, eyebrow); everything else CSS Modules. No inline style objects
-  beyond a one-off. No CSS framework.
+  beyond a one-off. No CSS framework. Every screen at 100% zoom: the rules are in `docs/RESPONSIVE.md`.
 - **Server first:** pages and layouts are server components. Add `"use client"` only to the
   leaf that needs state or events, never to a page.
 - **Params are async:** `const { company } = await params;` (Next 15+).
@@ -63,7 +63,7 @@ api/                   route handlers (health; auth in Phase 2)
 
 ## Where the demo went
 
-`legacy/demo/` is the static dashboard exactly as it was, still served by `npm run demo` and
-still tested by the `syntax` and `smoke` CI jobs. It is the reference for porting: `js/data.js`
--> `prisma/seed`, `js/store.js` -> `features/cases/reducer.ts`, `js/dashboard.js` -> the role
-views. When the port is done, delete the folder and its two CI jobs.
+The old static dashboard (`legacy/demo/`) was ported and then deleted on 23 Sep 2026. Its
+`js/data.js` became `prisma/seed`, `js/store.js` became `features/cases/reducer.ts` and
+`js/dashboard.js` became the role views. Comments that say "port of legacy/demo/..." point into
+git history (last present at `d8ebf99`). Its two planning notes now live in `docs/`.

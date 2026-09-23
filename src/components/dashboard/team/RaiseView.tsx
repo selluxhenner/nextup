@@ -179,7 +179,8 @@ export function RaiseView() {
                   <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.4" stroke="currentColor" strokeWidth="2" /><rect x="11.05" y="6.8" width="1.9" height="7.1" rx="0.95" fill="currentColor" /><circle cx="12" cy="16.7" r="1.2" fill="currentColor" /></svg>
                 </span>
               </button>
-              <input className={styles.field} value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={current.placeholder} aria-label={current.label} autoFocus readOnly={locked}
+              {/* A textarea so a narrow screen can wrap the placeholder onto a second line; Enter still raises, so it stays one line of text. */}
+              <textarea className={styles.field} rows={1} value={draft} onChange={(e) => setDraft(e.target.value.replace(/\s*\n\s*/g, " "))} placeholder={current.placeholder} aria-label={current.label} autoFocus readOnly={locked}
                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); send(); } }} />
             </div>
 

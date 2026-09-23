@@ -3,7 +3,6 @@ node_modules
 .next
 .git
 .github
-legacy
 tests
 docs
 data

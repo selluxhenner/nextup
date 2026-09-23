@@ -6,7 +6,7 @@
 .cardList { padding: 6px 18px 12px; }
 .cardDark { background: var(--nh-dark); border-radius: var(--nh-r-lg); padding: 18px 20px 20px; color: var(--nh-on-dark); min-width: 0; box-shadow: var(--nh-card-shadow); }
 
-.eyebrow { font-family: var(--nh-mono); font-size: 9.5px; letter-spacing: 0.13em; text-transform: uppercase; color: var(--nh-on-dark-mute); }
+.eyebrow { font-family: var(--nh-mono); font-size: 11px; letter-spacing: 0.13em; text-transform: uppercase; color: var(--nh-on-dark-mute); }
 .cardDark .eyebrow { color: var(--nh-mute-2); }
 .h { font-size: 15px; font-weight: 800; color: var(--nh-ink); letter-spacing: -0.015em; }
 .cardDark .h { color: var(--nh-on-dark); }
@@ -25,7 +25,7 @@
 .split { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; align-items: start; }
 .stack { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 .stack14 { display: flex; flex-direction: column; gap: 14px; }
-.sticky { position: sticky; top: 0; }
+.sticky { position: sticky; top: 76px; } /* clears the sticky 60px bar of the simple shell */
 .grid2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px 18px; }
 .list { display: flex; flex-direction: column; }
 .mt { margin-top: 12px; }
@@ -77,8 +77,8 @@
 .bar[data-tone="flat"] { background: var(--nh-line); }
 .bar[data-tone="light"] { background: #c9c8c1; }
 
-.avatar { width: 26px; height: 26px; border-radius: 50%; background: var(--nh-dark); color: #fff; display: flex; align-items: center; justify-content: center; font-family: var(--nh-mono); font-size: 10px; flex: none; }
-.avatar[data-size="sm"] { width: 21px; height: 21px; font-size: 9.5px; }
+.avatar { width: 26px; height: 26px; border-radius: 50%; background: var(--nh-dark); color: #fff; display: flex; align-items: center; justify-content: center; font-family: var(--nh-mono); font-size: 11px; flex: none; }
+.avatar[data-size="sm"] { width: 21px; height: 21px; font-size: 11px; }
 .avatar[data-size="lg"] { width: 34px; height: 34px; font-size: 11px; }
 .avatar[data-tone="light"] { background: var(--nh-on-dark); color: var(--nh-dark); }
 /* Coloured initials: eight hues, one per person (hueOf in primitives.tsx), dark ink on a soft tint. */

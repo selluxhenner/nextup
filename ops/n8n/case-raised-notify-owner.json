@@ -86,6 +86,12 @@
               "name": "eventId",
               "type": "string",
               "value": "={{ $json.body.eventId }}"
+            },
+            {
+              "id": "s7",
+              "name": "apiBase",
+              "type": "string",
+              "value": "={{ $json.body.apiBase }}"
             }
           ]
         },
@@ -119,7 +125,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.NEXTUP_BASE }}/api/{{ $('Compose the message').item.json.slug }}/events",
+        "url": "={{ $('Compose the message').item.json.apiBase }}/api/{{ $('Compose the message').item.json.slug }}/events",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendHeaders": true,

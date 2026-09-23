@@ -198,25 +198,41 @@ function Inbox() {
 }
 
 // Team member: one title and one box.
+// Raise (RaiseView): the greeting, the box (idea/problem switch + one line, Attach/Affected + send)
+// and the "How NextUp works" card with its four steps.
 function Raise() {
   return (
     <>
-      <Skeleton w={280} h={36} r="md" />
+      <Skeleton w={360} h={42} r="md" className={styles.raiseTitle} />
       <div className={styles.raiseBox}>
-        <div className={styles.chips}>
-          <Skeleton w={72} h={30} r="pill" />
-          <Skeleton w={84} h={30} r="pill" />
+        <div className={styles.raiseLine}>
+          <Skeleton w={58} h={30} r="pill" />
+          <Skeleton w="55%" h={16} />
         </div>
-        <Skeleton w="100%" h={120} r="md" />
         <div className={styles.raiseFoot}>
           <div className={styles.chips}>
-            <Skeleton w={34} h={34} r="circle" />
-            <Skeleton w={34} h={34} r="circle" />
+            <Skeleton w={78} h={32} r="pill" />
+            <Skeleton w={92} h={32} r="pill" />
           </div>
-          <Skeleton w={96} h={38} r="pill" />
+          <Skeleton w={36} h={36} r="circle" />
         </div>
       </div>
-      <Skeleton w={260} h={12} />
+      <div className={styles.raiseCard}>
+        <div className={styles.raiseCardHead}>
+          <Skeleton w={170} h={20} />
+          <Skeleton w={150} h={11} />
+        </div>
+        <div className={styles.raiseHow}>
+          {n(4).map((i) => (
+            <div key={i} className={styles.raiseStep}>
+              <Skeleton w="100%" h={78} r="md" />
+              <Skeleton w="60%" h={16} />
+              <Skeleton w="90%" h={11} />
+              <Skeleton w="70%" h={11} />
+            </div>
+          ))}
+        </div>
+      </div>
     </>
   );
 }

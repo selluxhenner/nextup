@@ -1,12 +1,14 @@
-# CI for NextUp (Next.js app at the root, static demo in legacy/demo).
+# CI for NextUp (Next.js app at the root).
 #
 # Four jobs, all must pass before a PR can merge:
-#   guard   — no secrets / forbidden files / edits to generated code
+#   guard   — no secrets / forbidden files / oversized files / Kevin-owned paths
 #   app     — npm ci, lint, typecheck, unit tests, production build
-#   syntax  — legacy demo: every JS file parses, index.html keeps its runtime
-#             wiring, the store reducer passes its unit tests
-#   smoke   — legacy demo in real Chromium: renders, roles switch, mobile OK,
-#             then the end-to-end inbox flow
+#   e2e     — Playwright, demo mode (no database): the inbox loop, role homes,
+#             escalation to the deputy, every page at phone width
+#   e2e-db  — Playwright against Postgres: a company made in /admin, personal
+#             login codes, the loop across real sessions, Settings -> Members
+#
+# The legacy demo's syntax + smoke jobs went with legacy/ in #61; e2e is their port.
 #
 # Kevin owns this file.
 
@@ -60,14 +62,10 @@ jobs:
           done < changed.txt
           exit $fail
 
-      - name: Block edits to generated runtime and protected config
+      - name: Block edits to protected config
         shell: bash
         run: |
           fail=0
-          if grep -qx 'legacy/demo/support.js' changed.txt; then
-            echo "::error file=legacy/demo/support.js::support.js is generated. Do not edit it — ask Kevin. (Kevin: merge with bypass if this is an intended runtime update.)"
-            fail=1
-          fi
           # Author check is advisory, not security — the ruleset is the real gate.
           if [ "${{ github.actor }}" != "selluxhenner" ]; then
             for p in '^\.github/' '^\.gitignore$' '^CLAUDE\.md$' '^CONTRIBUTING\.md$'; do
@@ -93,6 +91,18 @@ jobs:
           done < changed.txt
           exit $fail
 
+      - name: No obvious API keys in source
+        shell: bash
+        run: |
+          # Belt-and-braces on top of gitleaks: common key prefixes in tracked text files.
+          if grep -rnE '(sk-[A-Za-z0-9]{20,}|sk-ant-[A-Za-z0-9_-]{20,}|AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{36}|xox[baprs]-[A-Za-z0-9-]{10,}|AIza[0-9A-Za-z_-]{35})' \
+               --include='*.js' --include='*.ts' --include='*.tsx' --include='*.html' --include='*.css' --include='*.md' --include='*.json' --include='*.yml' . \
+               --exclude-dir=.git --exclude-dir=node_modules; then
+            echo "::error::Something that looks like an API key is in the source. Remove it and rotate the key."
+            exit 1
+          fi
+          echo "ok"
+
       - name: Secret scan (gitleaks)
         uses: gitleaks/gitleaks-action@v2
         env:
@@ -113,104 +123,85 @@ jobs:
       - run: npm test
       - run: npm run build
 
-  syntax:
-    name: syntax · legacy demo JS parses, HTML wiring intact
+  e2e:
+    name: e2e · Playwright, demo mode
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
 
-      - name: Every JS file must parse
-        shell: bash
-        run: |
-          set -e
-          cd legacy/demo
-          for f in support.js js/*.js; do
-            echo "node --check $f"
-            node --check "$f"
-          done
+      - name: Install Chromium for Playwright
+        run: npx playwright install --with-deps chromium
 
-      - name: index.html must keep its runtime wiring
-        shell: bash
-        run: |
-          set -e
-          cd legacy/demo
-          need() { grep -qF -- "$1" index.html || { echo "::error file=legacy/demo/index.html::missing: $1"; exit 1; }; }
-          need '<script src="./support.js"></script>'
-          need '<script src="./js/data.js"></script>'
-          need '<script src="./js/store.js"></script>'
-          need '<script src="./js/dashboard.js"></script>'
-          need '<x-dc>'
-          need '</x-dc>'
-          need 'data-dc-script'
-          need 'window.createDashboardComponent(DCLogic)'
-          echo "ok"
+      # playwright.config.ts builds the app, starts it on :3100 with DATABASE_URL="" and runs
+      # tests/e2e/demo. CI=true turns on forbidOnly and one retry.
+      - name: Run the demo suite
+        run: npm run e2e
 
-      - name: Reducer tests (js/store.js)
-        shell: bash
-        run: node .github/ci/store.test.cjs
-
-      - name: No obvious API keys in source
-        shell: bash
-        run: |
-          # Belt-and-braces on top of gitleaks: common key prefixes in tracked text files.
-          if grep -rnE '(sk-[A-Za-z0-9]{20,}|sk-ant-[A-Za-z0-9_-]{20,}|AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{36}|xox[baprs]-[A-Za-z0-9-]{10,}|AIza[0-9A-Za-z_-]{35})' \
-               --include='*.js' --include='*.html' --include='*.css' --include='*.md' --include='*.json' --include='*.yml' . \
-               --exclude-dir=.git --exclude-dir=node_modules; then
-            echo "::error::Something that looks like an API key is in the source. Remove it and rotate the key."
-            exit 1
-          fi
-          echo "ok"
-
-  smoke:
-    name: smoke · legacy demo renders in Chromium
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-
-      - name: Install Playwright (Chromium only)
-        shell: bash
-        run: |
-          mkdir -p "$RUNNER_TEMP/pw" && cd "$RUNNER_TEMP/pw"
-          npm init -y >/dev/null
-          npm i --no-audit --no-fund playwright@1.47.2 >/dev/null
-          npx playwright install --with-deps chromium
-
-      - name: Serve the page
-        shell: bash
-        run: |
-          python -m http.server 8765 --directory legacy/demo >server.log 2>&1 &
-          for i in $(seq 1 20); do
-            curl -sf http://localhost:8765/index.html >/dev/null && break
-            sleep 0.5
-          done
-          curl -sf http://localhost:8765/index.html >/dev/null || { echo "server did not start"; cat server.log; exit 1; }
-
-      - name: Run smoke test
-        shell: bash
-        env:
-          NODE_PATH: ${{ runner.temp }}/pw/node_modules
-        run: node .github/ci/smoke.cjs
-
-      - name: Run the end-to-end flow (raise → question → answer → no → hand-over → approve)
-        shell: bash
-        env:
-          NODE_PATH: ${{ runner.temp }}/pw/node_modules
-        run: node .github/ci/flow.test.cjs
-
-      - name: Upload screenshots on failure
+      - name: Upload the Playwright report
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: smoke-screenshots
-          path: .github/ci/out/*.png
-          if-no-files-found: ignore
+          name: playwright-report-demo
+          path: playwright-report/
+          retention-days: 14
+
+  e2e-db:
+    name: e2e-db · Playwright against Postgres
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: nextup
+          POSTGRES_PASSWORD: nextup
+          POSTGRES_DB: nextup_e2e
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U nextup"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    # A database that lives for this one job; the password is the service's own, not a secret.
+    env:
+      DATABASE_URL: postgresql://nextup:nextup@127.0.0.1:5432/nextup_e2e
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+
+      # Fresh random values every run, masked in the log - nothing to store in repo secrets.
+      - name: Generate AUTH_SECRET and ADMIN_ACCESS_CODE
+        shell: bash
+        run: |
+          auth=$(openssl rand -hex 32); admin=$(openssl rand -hex 16)
+          echo "::add-mask::$auth"; echo "::add-mask::$admin"
+          echo "AUTH_SECRET=$auth" >> "$GITHUB_ENV"
+          echo "ADMIN_ACCESS_CODE=$admin" >> "$GITHUB_ENV"
+
+      - name: Migrate the empty database
+        run: npm run db:migrate
+
+      - name: Install Chromium for Playwright
+        run: npx playwright install --with-deps chromium
+
+      # Creates its own company in /admin, logs in with the codes it prints, deletes it afterwards.
+      - name: Run the database suite
+        run: npm run e2e:db
+
+      - name: Upload the Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-db
+          path: playwright-report/
+          retention-days: 14

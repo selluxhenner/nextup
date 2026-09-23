@@ -20,12 +20,16 @@ export const inboxIdeas = (ctx: DemoContext) => (ctx.role === "manager" ? decisi
 // What the Inbox badge counts: live cases on the desk plus the decisions owed.
 export const inboxCount = (ctx: DemoContext) => openCases(ctx).length + inboxIdeas(ctx).length;
 
-// My cases: what I raised plus the ideas I co-signed, newest first.
+// My cases: what I raised plus the ideas I co-signed, newest first. "I" is whoever the events were
+// posted as - the same rule as DemoProvider's `actor` and server/actions/events.ts: a member with an
+// anonymous handle posts under it, everyone else (and people added in /admin or Settings, who have
+// no handle) under their name.
 export function mineRows(ctx: DemoContext): MineRow[] {
-  const handle = ctx.persona.who.handle;
+  const { name, handle } = ctx.persona.who;
+  const me = ctx.persona.role.id === "member" && handle ? handle : name;
   const { promiseDays, outcomeDays } = ctx.seed;
-  return ctx.D.cases.filter((c) => c.from === handle).map((c) => mineRow(c, ctx.S.day, ctx.f, promiseDays, outcomeDays))
-    .concat(handle ? ctx.D.ideas.filter((i) => i.cosigners.some((x) => x.name === handle)).map((i) => cosignRow(i, ctx.S.day, ctx.f, handle, promiseDays)) : [])
+  return ctx.D.cases.filter((c) => c.from === me).map((c) => mineRow(c, ctx.S.day, ctx.f, promiseDays, outcomeDays))
+    .concat(ctx.D.ideas.filter((i) => i.cosigners.some((x) => x.name === me)).map((i) => cosignRow(i, ctx.S.day, ctx.f, me, promiseDays)))
     .sort((a, b) => b.sortDay - a.sortDay);
 }
 

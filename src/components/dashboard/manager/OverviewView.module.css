@@ -50,7 +50,7 @@
 
 .peopleN { font-family: var(--nh-mono); font-size: 13px; font-weight: 700; color: var(--nh-ink); white-space: nowrap; }
 .criteria { gap: 5px; margin-top: 7px; }
-.deptsMono { font-family: var(--nh-mono); font-size: 10.5px; letter-spacing: 0.05em; color: var(--nh-mute); }
+.deptsMono { font-family: var(--nh-mono); font-size: 11px; letter-spacing: 0.05em; color: var(--nh-mute); }
 
 @media (max-width: 760px) {
   .kpis { grid-template-columns: repeat(2, 1fr); }

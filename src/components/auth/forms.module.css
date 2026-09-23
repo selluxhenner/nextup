@@ -15,7 +15,7 @@
 /* The line under "Continue with Microsoft". */
 .under { margin: -8px 0 0; text-align: center; }
 
-/* Demo boxes only: the "view as" list under the login. Dashed and labelled, so nobody mistakes
+/* Demo boxes only: the "open the demo" button under the login. Dashed and labelled, so nobody mistakes
    it for the way real people get in. */
 .demo {
   margin-top: 22px;
@@ -36,24 +36,3 @@
   border-radius: 999px;
   padding: 2px 8px;
 }
-.demoPeople { display: grid; gap: 6px; }
-.demoPerson {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  width: 100%;
-  padding: 9px 12px;
-  border: 1px solid var(--nh-line);
-  border-radius: var(--nh-radius-sm, 10px);
-  background: var(--nh-surface);
-  color: var(--nh-ink);
-  font: inherit;
-  font-size: 13.5px;
-  text-align: left;
-  cursor: pointer;
-  transition: border-color 0.15s ease;
-}
-.demoPerson:hover { border-color: var(--nh-brand); }
-.demoPerson:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
-.demoPerson:disabled { opacity: 0.6; cursor: default; }
-.demoRole { margin-left: auto; font-size: 12px; color: var(--nh-mute); white-space: nowrap; }

@@ -27,8 +27,7 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:3000. The old static demo still runs with `npm run demo`
-(http://localhost:8765/index.html) — it lives in `legacy/demo/`.
+Open http://localhost:3000.
 
 If you use Claude Code: it reads `CLAUDE.md` automatically. Don't tell it to
 ignore those rules; they are the same rules as on this page.
@@ -129,7 +128,6 @@ person's code to make the error go away.
 | `git push --force` / `-f` | Overwrites other people's work. Never on a shared branch. |
 | `git add -f something` | Force-adding an ignored file. The ignore is on purpose. |
 | Edit `.gitignore`, `CLAUDE.md`, or anything in `.github/` | Kevin's. Ask. |
-| Edit `legacy/demo/support.js` | Generated runtime. Any change will be reverted. |
 | Add a new dependency (`npm install something`) | Changes how everyone runs the project. Say why in the PR; Kevin decides. |
 | Reformat a whole file "to clean it up" | 400-line diffs hide the 3 lines that matter. |
 | Commit `.env`, keys, passwords, tokens | It's public the second it's pushed. Rotate it and tell Kevin. |

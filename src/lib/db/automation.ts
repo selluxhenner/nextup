@@ -100,3 +100,12 @@ export async function raisesFor(
     noticeAt: noticeAt.get("notify:" + r.id)?.toISOString() ?? null,
   }));
 }
+
+/** How many cases have been raised across these companies. Cheap, and it is what tells the
+ *  Automation card apart from "nothing raised yet" and "raised, but n8n never answered". */
+export async function raiseCountFor(companyIds: readonly string[]): Promise<number> {
+  if (companyIds.length === 0) return 0;
+  return getDb().caseEvent.count({
+    where: { companyId: { in: [...companyIds] }, type: "case.raised" },
+  });
+}

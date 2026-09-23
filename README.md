@@ -33,7 +33,6 @@ docker compose up --build     # http://acme.localhost, http://admin.localhost
 | `npm run lint` · `npm run typecheck` · `npm test` | what CI runs (all database-free) |
 | `npm run db:migrate` · `npm run db:seed` | set up a local database and its demo company (reads `.env.local`) |
 | `ops/test-db.sh` | the database-backed suite, kept out of `npm test` |
-| `npm run demo` | the old static demo at http://localhost:8765 (`legacy/demo/`) |
 
 Demo company: `/acme`, log in at `/acme/login` with a personal login code (`npm run db:seed`
 prints one per person; `/admin` issues new ones), with Microsoft if the company is on Entra, or -
@@ -50,7 +49,6 @@ src/config/         roles.ts (ROLE_HOME, ROLE_ACCESS) · nav.ts · site.ts
 src/lib/            db client, utils          src/server/actions/   server actions (validate -> auth -> features)
 src/styles/         design tokens             src/types/            domain types
 prisma/  public/  tests/{unit,e2e}  docs/
-legacy/demo/        the static dashboard demo, unchanged, still used for sales calls
 ```
 
 Rule of thumb: **pages fetch, components render, features decide.**

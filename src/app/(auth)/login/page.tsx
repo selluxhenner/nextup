@@ -1,9 +1,7 @@
-// STEP 1 of login: work email or company slug -> /[company]/login. Visual only: the form is a GET to /acme/login.
+// STEP 1 of login: work email or company name -> that company's /[company]/login (findCompany).
 import Link from "next/link";
 import { AuthShell, AuthTitle, AuthFoot, AuthRoles } from "@/components/auth/AuthShell";
-import { Field } from "@/components/ui/Field";
-import { Divider } from "@/components/ui/Divider";
-import styles from "@/components/auth/forms.module.css";
+import { FindCompanyForm } from "@/components/auth/FindCompanyForm";
 
 export const metadata = { title: "Log in" };
 
@@ -25,22 +23,7 @@ export default function FindCompanyPage() {
     >
       <AuthTitle title="Find your company" sub="Enter your work email or your company's NextUp name. We will take you to your company's login." />
 
-      <form className={styles.form} action="/acme/login" method="get" autoComplete="off">
-        <Field id="email" label="Work email">
-          <input className="nh-input" id="email" type="email" placeholder="you@company.com" autoComplete="email" />
-        </Field>
-
-        <Divider />
-
-        <Field id="company" label="Company name" hint="The short name in your invitation link.">
-          <div className={styles.slug}>
-            <input className="nh-input" id="company" type="text" placeholder="acme" defaultValue="acme" autoComplete="organization" />
-            <span className={`${styles.slugSuffix} nh-mono`}>.nextup.app</span>
-          </div>
-        </Field>
-
-        <button className="nh-btn nh-btn-primary nh-btn-block" type="submit">Continue</button>
-      </form>
+      <FindCompanyForm />
 
       <AuthFoot>
         New here? <Link href="/signup">Create a workspace</Link> · <Link href="/invite/demo">I have an invite</Link>
