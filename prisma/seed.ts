@@ -13,7 +13,10 @@ import { generateLoginCode, hashLoginCode } from "../src/features/auth/login-cod
 import { DEMO_COMPANIES } from "../src/features/tenant/demo-companies";
 import { seedTemplate } from "../src/features/demo";
 import { toSeedJson } from "../src/features/demo/parse";
+import { GOALS } from "../src/features/evaluate";
+import { rowsFromSeed } from "../src/features/knowledge";
 import { getDb } from "../src/lib/db/client";
+import { replaceKnowledge } from "../src/lib/db/knowledge";
 
 // Same rule as prisma7.config.ts: .env.local on a laptop, the environment everywhere else.
 try {
@@ -47,6 +50,10 @@ async function main() {
       config: { create: {} },
     },
   });
+
+  // The org units, roles, routing table and goals as rows (docs/COMPANY_KNOWLEDGE.md). Replaced
+  // wholesale on every run: nobody edits acme's structure by hand yet.
+  await replaceKnowledge(company.id, rowsFromSeed(seedTemplate("demo"), GOALS, () => crypto.randomUUID()), "seed");
 
   const printed: string[] = [];
   for (const u of demo.users) {
