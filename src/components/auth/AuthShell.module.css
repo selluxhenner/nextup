@@ -57,16 +57,13 @@
 
 .artLogo {
   position: absolute;
-  top: 14px;
-  left: 14px;
+  top: 15px;
+  left: 27px; /* where the old padded black file put the mark */
   z-index: 3;
-  width: 140px;
-  height: 45px;
-  overflow: hidden;
   line-height: 0;
 }
 
-.artLogo img { display: block; width: 140px; height: auto; transform: translate(-12px, -13px); }
+.artLogo img { display: block; width: auto; height: 44px; } /* the blue wordmark, cropped tight - the height sets its width */
 
 .artBack {
   position: absolute;
