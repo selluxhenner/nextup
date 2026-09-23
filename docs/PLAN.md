@@ -54,7 +54,7 @@ Each phase ends with something a teammate can open in a browser. One branch per 
 - [x] `features/`: tenant (demo table), routing matcher, metrics, case event types; unit tests
 - [x] CI: lint, typecheck, test, build; CLAUDE.md / CONTRIBUTING.md / CODEOWNERS updated
 - [x] Rename the GitHub repo `agility-dashborad` -> `nexthub` -> `nextup`
-- [x] Hosting: Vercel project on `main` (`docs/DEPLOY.md`)
+- [ ] Hosting: compose stack on the Hetzner box (`docs/DEPLOY.md`) - not yet run end to end
 
 ### Phase 1 - Finish the public side
 - [x] Pricing and contact pages with real copy; contact form stores a pilot request, answered from `/admin/requests`
