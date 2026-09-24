@@ -5,7 +5,19 @@
 // DB-free and CI needs no change.
 
 /** Models whose rows belong to exactly one company. Anything else is unscoped by nature. */
-export const TENANT_MODELS = new Set(["User", "CaseEvent", "ApiToken", "CompanyConfig"]);
+export const TENANT_MODELS = new Set([
+  "User",
+  "CaseEvent",
+  "ApiToken",
+  "CompanyConfig",
+  // Company knowledge - docs/COMPANY_KNOWLEDGE.md
+  "CompanyProfile",
+  "OrgUnit",
+  "OrgRole",
+  "OrgRoleHolder",
+  "RoutingRule",
+  "Goal",
+]);
 
 /** Operations that must narrow by company through `where`. */
 export const NEEDS_WHERE = new Set([

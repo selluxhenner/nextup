@@ -128,6 +128,9 @@ services:
       APP_DOMAIN: ${APP_DOMAIN:-localhost}
       ACME_EMAIL: ${ACME_EMAIL:-}
       HOSTTECH_API_TOKEN: ${HOSTTECH_API_TOKEN:-}
+      # The login in front of n8n.<domain> and mail.<domain> (production Caddyfiles only).
+      OPS_USER: ${OPS_USER:-}
+      OPS_PASSWORD_HASH: ${OPS_PASSWORD_HASH:-}
     depends_on:
       - app
 

@@ -18,6 +18,10 @@ export function proposeRoute<R extends RouteRow>(text: string, routes: readonly 
 
 export type Proposal<R> = { route: R | null; confidence: number };
 
+// Stamped on every proposal that is stored (case.raised payload.proposal). Bump it whenever the
+// matching or the confidence formula changes, so /admin/decisions can compare versions.
+export const ROUTER_VERSION = "keywords-v1";
+
 // The intake box: nothing until 8 characters, then the best row with a confidence figure
 // (55% + 14 per keyword hit, capped at 96). `route: null` = no row in the map matches yet.
 export function propose<R extends RouteRow>(text: string, routes: readonly R[]): Proposal<R> | null {

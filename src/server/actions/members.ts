@@ -11,7 +11,7 @@ import { getViewerFor } from "@/features/auth/session";
 import { generateLoginCode, hashLoginCode } from "@/features/auth/login-code";
 import { initialsOf, seedNameWarnings } from "@/features/tenant/create";
 import { isRole, roleChangeProblem, validateNewMember, type Member } from "@/features/tenant/members";
-import { parseSeed } from "@/features/demo/parse";
+import { companySeed } from "@/lib/db/companies";
 import type { Seed } from "@/features/demo/types";
 import { getDb, hasDatabase } from "@/lib/db/client";
 
@@ -120,11 +120,11 @@ export async function addMemberAction(_prev: AddState, form: FormData): Promise<
   const problems = validateNewMember(person, await membersOf(manager.companyId));
   if (problems.length) return { problems };
 
-  const company = await getDb().company.findUnique({ where: { id: manager.companyId }, select: { seedJson: true } });
+  const company = await getDb().company.findUnique({ where: { id: manager.companyId }, select: { id: true, seedJson: true } });
   // Only for the "their inbox will look empty" warning - a seed that fails to parse skips it.
   let seed: Seed | null = null;
   try {
-    seed = company ? parseSeed(company.seedJson) : null;
+    seed = company ? await companySeed(company) : null;
   } catch {
     seed = null;
   }

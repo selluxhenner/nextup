@@ -48,7 +48,7 @@
 
 .eventWhen {
     font-family: var(--nh-mono);
-    font-size: 10.5px;
+    font-size: 11px;
     color: var(--nh-on-dark-mute);
     margin-top: 3px;
 }
@@ -63,7 +63,7 @@
 .hop { display: inline-flex; align-items: center; gap: 5px; }
 .hop[data-last="true"] { color: var(--nh-ink); font-weight: 700; }
 .arrow { color: var(--nh-mute-2); }
-.auto { font-size: 10px; font-weight: 600; color: var(--nh-accent); padding: 1px 6px; border-radius: 999px; background: #fff1ea; }
+.auto { font-size: 11px; font-weight: 600; color: var(--nh-accent); padding: 1px 6px; border-radius: 999px; background: #fff1ea; }
 
 /* Your move: the actions, who stands behind it, the thread. */
 /* The score, as the dashboard scores it, and every correction that moved it. */
@@ -74,7 +74,7 @@
 .scoreL { font-size: 12px; color: var(--nh-mute); line-height: 1.4; }
 .corr { margin-top: 6px; font-size: 12px; color: var(--nh-ink-2); line-height: 1.45; padding: 6px 10px; border-radius: var(--nh-r-sm); background: var(--nh-surface); }
 .whyRow { display: flex; gap: 8px; margin-top: 10px; }
-.rescoreTag { margin-left: 6px; padding: 1px 6px; border-radius: 999px; background: var(--nh-brand-tint); color: var(--nh-brand); font-size: 10px; font-weight: 600; }
+.rescoreTag { margin-left: 6px; padding: 1px 6px; border-radius: 999px; background: var(--nh-brand-tint); color: var(--nh-brand); font-size: 11px; font-weight: 600; }
 .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
 .standing { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
 .avatars { display: inline-flex; }

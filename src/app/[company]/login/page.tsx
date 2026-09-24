@@ -1,17 +1,17 @@
 // STEP 2 of login: company-branded login. Your personal code or your Microsoft account says who
 // you are (src/server/actions/auth.ts, src/server/microsoft-login.ts); a demo box adds a
-// clearly-labelled "view as" list for demo-stage companies (src/server/demo-login.ts).
+// clearly-labelled "open the demo" button for demo-stage companies (src/server/demo-login.ts).
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AuthShell, AuthTitle, AuthFoot, AuthStats } from "@/components/auth/AuthShell";
 import { CompanyLoginForm } from "@/components/auth/CompanyLoginForm";
-import { DemoSwitcher } from "@/components/auth/DemoSwitcher";
+import { DemoButton } from "@/components/auth/DemoButton";
 import { Button } from "@/components/ui/Button";
 import { findTenant } from "@/features/tenant";
 import { hasDatabase } from "@/lib/db/client";
 import { SITE } from "@/config/site";
 import { isMicrosoftError, MICROSOFT_ERRORS } from "@/features/auth/entra";
-import { demoPeopleFor } from "@/server/demo-login";
+import { demoPersonFor } from "@/server/demo-login";
 import { companyPrefix, microsoftEnabledFor, safeNext } from "@/server/microsoft-login";
 import styles from "@/components/auth/forms.module.css";
 
@@ -30,9 +30,9 @@ export default async function CompanyLoginPage({ params, searchParams }: Props) 
   const short = tenant.name.split(" ")[0];
   const next = safeNext(rawNext) || undefined;
 
-  const [microsoft, demoPeople] = hasDatabase()
-    ? await Promise.all([microsoftEnabledFor(tenant.slug), demoPeopleFor(tenant.slug)])
-    : [false, []];
+  const [microsoft, demoPerson] = hasDatabase()
+    ? await Promise.all([microsoftEnabledFor(tenant.slug), demoPersonFor(tenant.slug)])
+    : [false, null];
   const microsoftHref = microsoft
     ? `${companyPrefix(tenant.slug)}/login/microsoft${next ? `?next=${encodeURIComponent(next)}` : ""}`
     : null;
@@ -70,7 +70,7 @@ export default async function CompanyLoginPage({ params, searchParams }: Props) 
             microsoftHref={microsoftHref}
             microsoftError={isMicrosoftError(error) ? MICROSOFT_ERRORS[error] : undefined}
           />
-          <DemoSwitcher slug={tenant.slug} next={next} people={demoPeople} />
+          <DemoButton slug={tenant.slug} next={next} person={demoPerson} />
         </>
       ) : (
         // No database, so there is no one to sign in as: a laptop without Postgres. The demo

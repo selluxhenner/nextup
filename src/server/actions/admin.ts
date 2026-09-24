@@ -14,6 +14,8 @@ import { ADMIN_COOKIE, signAdmin, verifyAdmin } from "@/features/auth/cookie";
 import type { CompanyRow, PilotRequestRow } from "@/features/admin/rows";
 import { seedTemplate } from "@/features/demo";
 import { toSeedJson } from "@/features/demo/parse";
+import { GOALS } from "@/features/evaluate";
+import { hasKnowledge, rowsFromSeed } from "@/features/knowledge";
 import {
   initialsOf,
   markFor,
@@ -27,12 +29,13 @@ import { automationFor, raiseCountFor, raisesFor } from "@/lib/db/automation";
 import { databaseFacts, type DatabaseFacts } from "@/lib/db/health";
 import { describeDatabase, type DatabaseReport } from "@/features/admin/health";
 import { canMoveStage, isStage, STAGES } from "@/features/admin/stages";
+import { replaceKnowledge } from "@/lib/db/knowledge";
 import { createToken } from "@/lib/db/tokens";
 import { summarise, type AutomationReport, type NoticeFacts } from "@/features/integrations/automation";
 import { classify, type AutomationTaskView } from "@/features/integrations/tasks";
 import { buildRaisedNotice } from "@/features/cases/notice";
 import { companyBaseUrl, deliverRaisedNotice } from "@/server/case-notice";
-import { parseSeed } from "@/features/demo/parse";
+import { companySeed } from "@/lib/db/companies";
 import type { EventPayload } from "@/features/cases/events";
 import { companyUrl, dashboardUrl, landingUrl } from "@/features/tenant/urls";
 import { DEMO_COMPANIES } from "@/features/tenant/demo-companies";
@@ -197,7 +200,7 @@ export async function createCompanyAction(_prev: CreateState, form: FormData): P
   const now = new Date();
   const codes = input.people.map((p) => ({ name: p.name.trim(), email: p.email.trim().toLowerCase(), code: generateLoginCode(input.slug) }));
 
-  await db.company.create({
+  const company = await db.company.create({
     data: {
       slug: input.slug,
       name: input.name,
@@ -219,6 +222,11 @@ export async function createCompanyAction(_prev: CreateState, form: FormData): P
       },
     },
   });
+
+  // The template's org units, roles, routing table and goals as rows (docs/COMPANY_KNOWLEDGE.md).
+  // The empty template has none, and a company without rows reads from seedJson as before.
+  const knowledge = rowsFromSeed(seed, input.template === "demo" ? GOALS : [], () => crypto.randomUUID());
+  if (hasKnowledge(knowledge)) await replaceKnowledge(company.id, knowledge, "admin");
 
   return {
     status: "created",
@@ -495,6 +503,7 @@ export async function automationTasks(limit = 25): Promise<AutomationTaskView[]>
   if (companies.length === 0) return [];
 
   const byId = new Map(companies.map((c) => [c.id, c]));
+  const seeds = new Map(await Promise.all(companies.map(async (c) => [c.id, await companySeed(c)] as const)));
   const raises = await raisesFor(companies.map((c) => c.id), limit);
   const now = Date.now();
 
@@ -507,7 +516,7 @@ export async function automationTasks(limit = 25): Promise<AutomationTaskView[]>
           eventId: r.eventId,
           caseId: r.caseId ?? "",
           payload,
-          seed: parseSeed(company.seedJson),
+          seed: seeds.get(company.id)!,
           people: company.users,
           day: company.demoDay,
           baseUrl: companyBaseUrl(company.slug),
@@ -567,7 +576,7 @@ export async function retryNoticeAction(_prev: RetryState, form: FormData): Prom
       eventId: event.id,
       caseId: event.targetId ?? "",
       payload: (event.payload ?? {}) as EventPayload,
-      seed: parseSeed(company.seedJson),
+      seed: await companySeed(company),
       people: company.users,
       day: company.demoDay,
       baseUrl: companyBaseUrl(slug),
@@ -633,7 +642,8 @@ export async function setCompanyStageAction(_prev: StageState, form: FormData): 
     };
   }
 
-  await getDb().company.update({ where: { slug }, data: { stage } });
+  // Every session signed before the move ends: a demo visitor must not keep a way into real cases.
+  await getDb().company.update({ where: { slug }, data: { stage, sessionEpoch: { increment: 1 } } });
 
   revalidatePath("/admin", "layout");
   revalidatePath("/", "layout");

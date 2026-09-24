@@ -31,6 +31,8 @@ An unknown stage gets the real-people policy: fail closed. Creating a company in
 | `/contact` | honeypot + server-side validation | 5 / hour per address |
 | `/api/[company]/events` | bearer token (sha256 hash stored), scoped to one company | - (token is 192 bits) |
 | Every server action | re-checks the session for the slug; never trusts the client for actor or company | - |
+| Case and idea events | `mayAppend` (`src/features/cases/permissions.ts`): only whoever holds a case (or a manager) decides, hands or asks; only the raiser answers; only managers re-route or move the clock; no re-raising an existing id | - |
+| `n8n.<domain>`, `mail.<domain>` | Caddy `basic_auth` from `OPS_USER` / `OPS_PASSWORD_HASH`; unset = 401 for everyone | - |
 
 Sessions are HMAC-signed cookies (`src/features/auth/cookie.ts`), `HttpOnly`, `SameSite=Lax`, and
 `Secure` whenever `COOKIE_SECURE=true` **or** `PUBLIC_SCHEME=https`. Post-login redirects only go
@@ -44,9 +46,11 @@ HSTS, `nosniff` and a referrer policy.
    company code opens nothing any more (`Company.accessCodeHash` is kept, nullable, until old
    rows are gone). Still open: team leaders issuing codes themselves instead of the admin, and an
    Entra app registration for the production box (`ENTRA_CLIENT_ID` / `ENTRA_CLIENT_SECRET`).
-2. **Session revocation.** Sessions are stateless for 8 h; issuing someone a new code does not end
-   the session they already have. Add `User.sessionVersion`, put it in the cookie, bump it on
-   new code/offboarding.
+2. **Session revocation.** Partly done: `getViewerFor` checks every session against the database
+   (same company id, the person still exists with the same role, and `Company.sessionEpoch`
+   unchanged - a stage move bumps it, so demo sessions end when real people move in). Still open:
+   issuing someone a new code does not end the session they already have. Add
+   `User.sessionVersion` next to the epoch and bump it on new code/offboarding.
 3. **Admin as people, not a shared code.** One `ADMIN_ACCESS_CODE` for everyone means no audit of
    who did what. Named admin users (magic link or SSO) plus 2FA.
 4. **Audit log for admin actions** - create, stage move, issue login code, issue token, delete - as

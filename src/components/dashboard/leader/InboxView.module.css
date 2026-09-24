@@ -20,7 +20,7 @@
 .waitAge { font-family: var(--nh-mono); font-size: 12px; font-weight: 700; color: var(--nh-ink); white-space: nowrap; }
 .waitMeta { margin-top: 6px; gap: 8px; }
 .waitWith { font-size: 11.5px; color: var(--nh-ink-2); }
-.waitState { font-family: var(--nh-mono); font-size: 10.5px; font-weight: 600; color: var(--nh-on-dark-mute); }
+.waitState { font-family: var(--nh-mono); font-size: 11px; font-weight: 600; color: var(--nh-on-dark-mute); }
 .waitState[data-hot="true"] { color: #b23c07; }
 
 .selMeta { margin-top: 11px; gap: 9px; }

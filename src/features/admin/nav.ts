@@ -1,6 +1,7 @@
 // The admin sidebar. Pure, so the badge rules are unit-tested.
 //
-// /admin is four pages, not one long scroll: Overview, Requests, Companies, Connections. The nav
+// /admin is six pages, not one long scroll: Overview, Requests, Companies, Knowledge, Decisions,
+// Connections. Knowledge and Decisions are read-only views for the software team. The nav
 // carries state, not just names - the badge is the answer, the link is only how you get to the
 // detail. Connections folds the database, case notices, their tasks and mail into one badge:
 // whichever is worst, because that is the one you are going there to fix.
@@ -10,7 +11,7 @@ import type { TaskCounts } from "@/features/integrations/tasks";
 
 export type Tone = "ok" | "warn" | "bad";
 
-export type AdminPage = "overview" | "requests" | "companies" | "connections";
+export type AdminPage = "overview" | "requests" | "companies" | "knowledge" | "decisions" | "connections";
 
 export type NavItem = {
   id: AdminPage;
@@ -46,6 +47,9 @@ export function adminNav(f: NavFacts): NavItem[] {
     { id: "overview", label: "Overview", path: "", badge: null, tone: null },
     { id: "requests", label: "Requests", path: "/requests", ...requestBadge(f.openRequests, f.overdueRequests) },
     { id: "companies", label: "Companies", path: "/companies", badge: String(f.companies), tone: null },
+    // Read-only views for the software team. No badge: nothing on them needs anyone today.
+    { id: "knowledge", label: "Knowledge", path: "/knowledge", badge: null, tone: null },
+    { id: "decisions", label: "Decisions", path: "/decisions", badge: null, tone: null },
     { id: "connections", label: "Connections", path: "/connections", ...connectionBadge(f) },
   ];
 }

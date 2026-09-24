@@ -9,10 +9,13 @@ import { z } from "zod";
 import { getViewerFor } from "@/features/auth/session";
 import type { CaseEventType, EventPayload } from "@/features/cases/events";
 import { APP_EVENT_TYPES } from "@/features/cases/persist";
-import { appendEventRow, deleteEventsForTargets, resetCompanyLog } from "@/lib/db/events";
+import { mayAppend } from "@/features/cases/permissions";
+import { reduce } from "@/features/cases/reducer";
+import { seedFor } from "@/features/demo";
+import { appendEventRow, deleteEventsForTargets, loadLogForSlug, resetCompanyLog } from "@/lib/db/events";
 import { getDb, hasDatabase } from "@/lib/db/client";
 import { issueSession } from "@/server/issue-session";
-import { parseSeed } from "@/features/demo/parse";
+import { companySeed } from "@/lib/db/companies";
 import { policyFor } from "@/features/admin/stages";
 import { buildRaisedNotice } from "@/features/cases/notice";
 import { companyBaseUrl, notifyCaseRaised } from "@/server/case-notice";
@@ -60,9 +63,13 @@ export async function appendEventAction(input: AppendInput): Promise<AppendOutco
   const viewer = await getViewerFor(slug);
   if (!viewer) return { ok: false, error: "Your session has expired. Log in again." };
 
-  if (type === "day.advanced" && !isDemoOwner(viewer.role)) {
-    return { ok: false, error: "Only a manager can move the demo clock - everyone shares it." };
-  }
+  // Who may do this to this case? Answered against the reduced log, the same state every browser
+  // renders - the buttons the UI hides are hidden here too (features/cases/permissions.ts).
+  const log = await loadLogForSlug(slug);
+  if (!log) return { ok: false, error: "Your session has expired. Log in again." };
+  const verdict = mayAppend(viewer, { type, target, payload }, reduce(await seedFor(slug), log));
+  if (!verdict.ok) return verdict;
+
   if (type === "day.advanced" && !(await mayRewriteHistory(viewer.companyId))) {
     return { ok: false, error: realCompany };
   }
@@ -100,7 +107,7 @@ async function notifyRaised(
   try {
     const company = await getDb().company.findUnique({
       where: { slug },
-      select: { demoDay: true, seedJson: true, users: { select: { name: true, email: true } } },
+      select: { id: true, demoDay: true, seedJson: true, users: { select: { name: true, email: true } } },
     });
     if (!company) return;
     notifyCaseRaised(
@@ -110,7 +117,7 @@ async function notifyRaised(
         eventId,
         caseId,
         payload,
-        seed: parseSeed(company.seedJson),
+        seed: await companySeed(company),
         people: company.users,
         day: company.demoDay,
         baseUrl: companyBaseUrl(slug),

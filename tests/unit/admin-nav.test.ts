@@ -26,10 +26,10 @@ const base = {
 const item = (facts: typeof base | Parameters<typeof adminNav>[0], id: string) => adminNav(facts).find((i) => i.id === id);
 
 describe("adminNav", () => {
-  it("is four pages, and quiet when everything is fine", () => {
+  it("is six pages, and quiet when everything is fine", () => {
     const items = adminNav(base);
-    expect(items.map((i) => i.id)).toEqual(["overview", "requests", "companies", "connections"]);
-    expect(items.map((i) => i.path)).toEqual(["", "/requests", "/companies", "/connections"]);
+    expect(items.map((i) => i.id)).toEqual(["overview", "requests", "companies", "knowledge", "decisions", "connections"]);
+    expect(items.map((i) => i.path)).toEqual(["", "/requests", "/companies", "/knowledge", "/decisions", "/connections"]);
     expect(items.filter((i) => i.tone === "bad" || i.tone === "warn")).toEqual([]);
     expect(item(base, "connections")).toMatchObject({ badge: null, tone: "ok" });
   });

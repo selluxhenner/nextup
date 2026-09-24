@@ -19,7 +19,6 @@ src/components/     React. Props in, JSX out. No fetching, no business rules.
 src/features/       domain logic per entity. No React, no DOM. Pages import from here.
 src/config/         roles, nav, site constants — data, not code.
 src/lib/            db client, small utils.   src/server/actions/  server actions.
-legacy/demo/        the old static dashboard. Frozen. Read it to port logic; do not develop in it.
 ```
 
 ## How to work here
@@ -83,7 +82,6 @@ legacy/demo/        the old static dashboard. Frozen. Read it to port logic; do 
 - No external requests except Google Fonts (already there). No analytics, no
   third-party scripts, no fetch to outside APIs.
 - No secrets in code, ever — not even "just for testing".
-- `legacy/demo/support.js` is generated. Do not edit it.
 
 ## Ownership — who changes what
 

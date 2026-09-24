@@ -206,7 +206,7 @@ export const LEADERS: string[] = ['T. Vogel', 'M. Roth', 'H. Sander'];
 // two of LEADERS; the buddy is the sideways contact and may be anyone.
 export const ROUTES: Route[] = [
   { id: 'r1', type: 'Spend under €5k (parts, tools, consumables)', keys: ['spend', 'buy', 'order', 'purchase', 'sensor', 'part', 'budget', '€', 'invoice', 'supplier'],
-    owner: { name: 'T. Vogel', role: 'Team lead, Production', dept: 'PRD' }, deputy: 'M. Roth', buddy: 'C. Ilg · Ops & Admin', wait: '3 d' },
+    owner: { name: 'T. Vogel', role: 'Team lead, 4-series', dept: 'PRD' }, deputy: 'M. Roth', buddy: 'C. Ilg · Ops & Admin', wait: '3 d' },
   { id: 'r2', type: 'Test-rig or machine time', keys: ['rig', 'test', 'machine', 'booking', 'slot', 'validation', 'endurance'],
     owner: { name: 'M. Roth', role: 'Engineering lead', dept: 'ENG' }, deputy: 'H. Sander', buddy: 'M. Roth · Engineering', wait: '4 d' },
   { id: 'r3', type: 'Quality data, measurements, tolerances', keys: ['quality', 'tolerance', 'measurement', 'mes', 'rework', 'scrap', 'drift', 'defect'],
@@ -216,9 +216,9 @@ export const ROUTES: Route[] = [
   { id: 'r5', type: 'Product change reaching the field', keys: ['customer', 'firmware', 'change note', 'release', 'field', 'shipped', 'sales'],
     owner: { name: 'H. Sander', role: 'Quality lead', dept: 'QUA' }, deputy: 'M. Roth', buddy: 'N. Kaya · Sales', wait: '2 d' },
   { id: 'r6', type: 'Shift plan, staffing, overtime', keys: ['shift', 'overtime', 'staff', 'holiday', 'roster', 'capacity', 'hours', 'people'],
-    owner: { name: 'T. Vogel', role: 'Team lead, Production', dept: 'PRD' }, deputy: 'H. Sander', buddy: 'D. Ferraro · Field Service', wait: '1 d' },
+    owner: { name: 'T. Vogel', role: 'Team lead, 4-series', dept: 'PRD' }, deputy: 'H. Sander', buddy: 'D. Ferraro · Field Service', wait: '1 d' },
   { id: 'r7', type: 'Fixture, tooling or line layout', keys: ['fixture', 'tooling', 'layout', 'line', 'housing', 'jig', 'setup', 'changeover'],
-    owner: { name: 'T. Vogel', role: 'Team lead, Production', dept: 'PRD' }, deputy: 'M. Roth', buddy: 'M. Roth · Engineering', wait: '2 d' },
+    owner: { name: 'T. Vogel', role: 'Team lead, 4-series', dept: 'PRD' }, deputy: 'M. Roth', buddy: 'M. Roth · Engineering', wait: '2 d' },
   { id: 'r8', type: 'Paperwork done twice (forms, job sheets)', keys: ['paper', 'form', 'twice', 'double', 'sheet', 'excel', 'report', 'manual'],
     owner: { name: 'H. Sander', role: 'Quality lead', dept: 'QUA' }, deputy: 'T. Vogel', buddy: 'D. Ferraro · Field Service', wait: '3 d' }
 ];

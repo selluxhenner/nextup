@@ -9,20 +9,6 @@
         ". \"$HOME/.nvm/nvm.sh\" && npm run dev"
       ],
       "port": 3000
-    },
-    {
-      "name": "legacy-demo",
-      "runtimeExecutable": "python",
-      "runtimeArgs": [
-        "-m",
-        "http.server",
-        "8765",
-        "--bind",
-        "127.0.0.1",
-        "--directory",
-        "legacy/demo"
-      ],
-      "port": 8765
     }
   ]
 }

@@ -34,6 +34,10 @@ a re-run answers `200 {"duplicate": true}` and writes no second row.
 
 ## Importing and exporting
 
+Open n8n at `n8n.<domain>` (behind the ops login from `OPS_USER` / `OPS_PASSWORD_HASH`) or on the
+published port. The first visit asks you to create the owner account - do it right after the first
+deploy; that account is yours and lives only in the `n8ndata` volume.
+
 `./ops/n8n` is mounted read-only at `/data/workflows`, so a `git pull` is enough to update it.
 
 ```bash

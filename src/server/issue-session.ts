@@ -5,6 +5,7 @@
 import { cookies } from "next/headers";
 import type { Role } from "@/config/roles";
 import { SESSION_COOKIE, SESSION_TTL_SECONDS, signSession } from "@/features/auth/cookie";
+import { getDb } from "@/lib/db/client";
 
 /**
  * Send login cookies over https only. COOKIE_SECURE=true forces it; a public https scheme turns it
@@ -20,6 +21,7 @@ export type SessionUser = { id: string; name: string; handle: string | null; rol
 export async function issueSession(companyId: string, slug: string, user: SessionUser): Promise<void> {
   const secret = process.env.AUTH_SECRET;
   if (!secret) throw new Error("AUTH_SECRET is not configured");
+  const company = await getDb().company.findUniqueOrThrow({ where: { id: companyId }, select: { sessionEpoch: true } });
 
   const token = signSession(
     {
@@ -30,6 +32,7 @@ export async function issueSession(companyId: string, slug: string, user: Sessio
       name: user.name,
       handle: user.handle,
       role: user.role as Role,
+      ep: company.sessionEpoch,
       exp: Math.floor(Date.now() / 1000) + SESSION_TTL_SECONDS,
     },
     secret,

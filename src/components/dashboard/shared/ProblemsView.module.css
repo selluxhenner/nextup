@@ -12,7 +12,7 @@
 .rowRight { display: flex; align-items: flex-end; gap: 14px; }
 .people { text-align: right; }
 .peopleN { font-family: var(--nh-mono); font-size: 15px; font-weight: 800; color: var(--nh-ink); }
-.peopleL { font-size: 10.5px; color: var(--nh-on-dark-mute); }
+.peopleL { font-size: 11px; color: var(--nh-on-dark-mute); }
 .rowChips { margin-top: 10px; }
 
 .tiles { margin-top: 16px; }
