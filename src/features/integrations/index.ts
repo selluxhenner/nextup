@@ -15,7 +15,7 @@ import type { EventPayload } from "@/features/cases/events";
 export const SYSTEM_EVENT_TYPES = ["case.handed", "case.commented"] as const;
 export type SystemEventType = (typeof SYSTEM_EVENT_TYPES)[number];
 
-export const SCOPES = ["events:read", "events:write"] as const;
+export const SCOPES = ["events:read", "events:write", "knowledge:write"] as const;
 export type Scope = (typeof SCOPES)[number];
 
 export const MAX_LIMIT = 500;

@@ -11,6 +11,8 @@ import { getDb, hasDatabase } from "@/lib/db/client";
 import { companySeed } from "@/lib/db/companies";
 import { decisionInputs } from "@/lib/db/decisions";
 import { loadKnowledge, loadProfile } from "@/lib/db/knowledge";
+import { assistStats, listDocuments, loadAssistSettings, type AssistSettings, type AssistStats } from "@/lib/db/assist";
+import { providerConfig, type ProviderConfig } from "@/server/assist/provider";
 
 export type KnowledgeView = { knowledge: Knowledge; profile: Profile | null; brief: string; source: "tables" | "demo" | "none" };
 
@@ -58,4 +60,19 @@ export async function decisionData(companies: readonly CompanyRef[], limit = 200
   });
   const routeNames = Object.fromEntries(Object.entries(routes).map(([slug, rs]) => [slug, Object.fromEntries(rs.map((r) => [r.id, r.type]))]));
   return { rows, routeNames };
+}
+
+export type AssistantView = {
+  settings: AssistSettings;
+  provider: ProviderConfig;
+  stats: AssistStats;
+  documents: Awaited<ReturnType<typeof listDocuments>>;
+} | null;
+
+/** The raise-page assistant for one company: its switches, 30 days of counts, the documents it may search. */
+export async function assistantView(companyId: string | null): Promise<AssistantView> {
+  if (!(await isAdmin()) || !hasDatabase() || !companyId) return null;
+  const since = new Date(Date.now() - 30 * 86_400_000);
+  const [settings, stats, documents] = await Promise.all([loadAssistSettings(companyId), assistStats(companyId, since), listDocuments(companyId)]);
+  return { settings, provider: providerConfig(), stats, documents };
 }

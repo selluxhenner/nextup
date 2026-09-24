@@ -1,0 +1,166 @@
+{
+  "name": "NextUp — ERP → assistant knowledge (nightly)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 2 * * *"
+            }
+          ]
+        }
+      },
+      "id": "b2000000-0000-4000-8000-000000000001",
+      "name": "Every night at 02:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -600,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "slug",
+              "name": "slug",
+              "value": "acme",
+              "type": "string"
+            },
+            {
+              "id": "apiBase",
+              "name": "apiBase",
+              "value": "http://app:3000",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b2000000-0000-4000-8000-000000000002",
+      "name": "Which company",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -380,
+        0
+      ],
+      "notes": "One copy of this workflow per company: set the slug here and attach that company's credentials."
+    },
+    {
+      "parameters": {
+        "url": "https://erp.example.internal/api/knowledge-export",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "b2000000-0000-4000-8000-000000000003",
+      "name": "Read the ERP export",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -160,
+        0
+      ],
+      "credentials": {},
+      "notes": "PLACEHOLDER: point this at the customer's ERP export (SAP OData, a DB node, a file share). Credential <slug>-erp. Export process descriptions, part and supplier master texts - not personal data."
+    },
+    {
+      "parameters": {
+        "jsCode": "// One document per ERP record. Label every document: without `classification` the app stores it\n// as confidential and the assistant cannot read it until someone checks it. Never send\n// strictly confidential data - the app refuses it.\nconst rows = $input.all().flatMap((i) => Array.isArray(i.json.items) ? i.json.items : [i.json]);\nconst documents = rows.slice(0, 100).map((r) => ({\n  source: 'erp',\n  externalId: String(r.id ?? r.number),\n  title: String(r.title ?? r.name ?? ''),\n  body: String(r.description ?? r.text ?? ''),\n  classification: r.classification ?? 'internal',\n})).filter((d) => d.externalId && d.title && d.body);\nreturn [{ json: { documents } }];"
+      },
+      "id": "b2000000-0000-4000-8000-000000000004",
+      "name": "Map to documents",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        60,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Which company').item.json.apiBase }}/api/{{ $('Which company').item.json.slug }}/knowledge/documents",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "b2000000-0000-4000-8000-000000000005",
+      "name": "Send to NextUp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        280,
+        0
+      ],
+      "credentials": {},
+      "notes": "Bearer credential <slug>-nextup; the token needs the knowledge:write scope (tokens made in /admin have it). Upserts by source + externalId, so re-running the whole export is safe."
+    }
+  ],
+  "connections": {
+    "Every night at 02:00": {
+      "main": [
+        [
+          {
+            "node": "Which company",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Which company": {
+      "main": [
+        [
+          {
+            "node": "Read the ERP export",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read the ERP export": {
+      "main": [
+        [
+          {
+            "node": "Map to documents",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Map to documents": {
+      "main": [
+        [
+          {
+            "node": "Send to NextUp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {
+    "instanceId": "nextup-pilot"
+  },
+  "tags": [
+    {
+      "name": "nextup"
+    }
+  ]
+}
