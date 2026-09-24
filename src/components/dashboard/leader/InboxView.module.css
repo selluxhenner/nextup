@@ -1,38 +1,112 @@
-.rowTop { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
-.rowMain { flex: 1 1 220px; min-width: 170px; }
-.caseTitle { font-size: 14px; font-weight: 700; color: var(--nh-ink); line-height: 1.35; }
-.rowRight { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
-.clock { font-family: var(--nh-mono); font-size: 11px; font-weight: 700; white-space: nowrap; border-radius: 6px; padding: 4px 8px; background: #f0efea; color: var(--nh-ink-2); }
-.clock[data-tone="soon"] { background: #ffe7dc; color: #b23c07; }
-.clock[data-tone="late"] { background: var(--nh-accent); color: #1a1a17; }
-.clock[data-tone="paused"] { background: transparent; color: var(--nh-on-dark-mute); border: 1px dashed #dedcd5; }
-.open { font-family: var(--nh-mono); font-size: 11px; color: var(--nh-on-dark-mute); }
-.why { margin-top: 9px; }
-.whyLabel { font-size: 11px; color: var(--nh-on-dark-mute); }
+/* The inbox: the shared stats strip, then the "Fresh ideas" card from the Claude
+   Design handoff - values are the handoff's, kept local: system type in the card, the serif title
+   only, iOS greys, red for late and blue for time left (tinted badges). With a row open the case sits
+   beside the card. */
+.page {
+  position: relative; z-index: 1; width: 100%;
+  display: flex; flex-direction: column; gap: clamp(16px, 2.4vh, 24px);
+  font-family: var(--c-font); -webkit-font-smoothing: antialiased;
+  --c-ink: #1c1c1e; --c-title: #1b1d22; --c-ink-2: #3a3a3c; --c-mute: #8e8e93;
+  --c-fill: #f2f2f7; --c-sep-head: #e5e5ea; --c-sep: #d1d1d6; --c-hover: #f7f7f9; --c-active: #e9e9ee;
+  --c-late: #ff3b30; --c-left: #007aff;
+  --c-font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "Helvetica Neue", Helvetica, sans-serif;
+}
+.srOnly { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; } /* the page keeps its heading for screen readers */
+/* The shared stats strip, restyled to sit with the card: same type, the card's
+   radius and shadow instead of a border, semibold numbers, grey labels. */
+.top .stats { border: 0; border-radius: 22px; padding: 4px 0; box-shadow: 0 10px 30px rgb(40 60 100 / 0.08), 0 1px 2px rgb(40 60 100 / 0.05); }
+.top .stat { padding: 14px 22px 13px; border-left-color: var(--c-sep-head); }
+.top .statV { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; color: var(--c-ink); font-variant-numeric: tabular-nums; }
+.top .statV[data-hot="true"] { color: var(--c-late); }
+.top .statL { font-size: 13px; margin-top: 3px; color: var(--c-mute); }
 
-.cleared { margin-top: 10px; padding-top: 14px; border-top: 1px solid var(--nh-line); }
-.clearedRow { display: flex; align-items: center; justify-content: space-between; gap: 12px; border-top: 1px solid #f0efea; padding: 10px 0; }
-.clearedTitle { font-size: 12.5px; font-weight: 600; color: var(--nh-ink-2); line-height: 1.35; }
+/* The card in the middle; with a row open, the case sits beside it. */
+.body { width: 100%; display: grid; grid-template-columns: minmax(0, 680px); justify-content: center; gap: 18px; align-items: start; }
+.page[data-picked="true"] .body { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.card {
+  background: var(--nh-card); border-radius: 22px; overflow: hidden; min-width: 0;
+  box-shadow: 0 10px 30px rgb(40 60 100 / 0.08), 0 1px 2px rgb(40 60 100 / 0.05);
+  color: var(--c-ink);
+}
+.cardHead { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 14px 16px 14px 24px; border-bottom: 1px solid var(--c-sep-head); }
+.cardTitle { margin: 0; font-family: var(--nh-serif); font-weight: 400; font-size: 26px; line-height: 1.05; letter-spacing: -0.02em; color: var(--c-title); white-space: nowrap; }
 
-.waitingCard { padding: 18px 18px 10px; }
-.waitRow { border-top: 1px solid #f0efea; padding: 11px 0 10px; }
-.waitTitle { font-size: 13px; font-weight: 700; color: var(--nh-ink); line-height: 1.35; }
-.waitAge { font-family: var(--nh-mono); font-size: 12px; font-weight: 700; color: var(--nh-ink); white-space: nowrap; }
-.waitMeta { margin-top: 6px; gap: 8px; }
-.waitWith { font-size: 11.5px; color: var(--nh-ink-2); }
-.waitState { font-family: var(--nh-mono); font-size: 11px; font-weight: 600; color: var(--nh-on-dark-mute); }
-.waitState[data-hot="true"] { color: #b23c07; }
+.tools { display: flex; align-items: center; gap: 8px; }
+.search { width: 190px; box-sizing: border-box; display: flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px; background: var(--c-fill); border-radius: 999px; color: var(--c-mute); cursor: text; }
+.search svg { flex: none; }
+.search input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: inherit; font-size: 14px; color: var(--c-ink); }
+.search input::placeholder { color: var(--c-mute); }
+.search:focus-within { box-shadow: 0 0 0 2px rgb(0 122 255 / 0.35); }
+.tool { width: 36px; height: 36px; flex: none; border-radius: 50%; border: 0; padding: 0; background: var(--c-ink); color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background 0.15s; }
+.tool:hover { background: var(--c-ink-2); }
+.tool:focus-visible { outline: 2px solid var(--c-left); outline-offset: 2px; }
 
+.list { list-style: none; margin: 0; padding: 0; }
+.row { display: flex; gap: 12px; width: 100%; padding: 0 0 0 16px; border: 0; background: transparent; text-align: left; font: inherit; color: inherit; cursor: pointer; }
+.row:hover { background: var(--c-hover); }
+.row:active, .row[data-active="true"] { background: var(--c-active); }
+.row:focus-visible { outline: 2px solid var(--c-left); outline-offset: -2px; }
+
+.avatar {
+  width: 40px; height: 40px; flex: none; margin-top: 13px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 15px; font-weight: 600; letter-spacing: 0.02em;
+  background: linear-gradient(180deg, #a5abb6, #858a94);
+}
+.avatar[data-tone="blue"] { background: linear-gradient(180deg, #8fa9c9, #6d88ab); }
+.avatar[data-tone="clay"] { background: linear-gradient(180deg, #c9a48f, #ab846d); }
+.avatar[data-tone="sage"] { background: linear-gradient(180deg, #94b39c, #72937b); }
+.avatar[data-tone="lilac"] { background: linear-gradient(180deg, #b29cc4, #927ba6); }
+
+/* The separator sits on the content column, so it starts past the avatar. */
+.rowBody { flex: 1; min-width: 0; display: flex; gap: 12px; padding: 12px 16px 13px 0; border-top: 0.5px solid var(--c-sep); }
+.list li:first-child .rowBody { border-top: 0; }
+.rowMain { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.rowTitle { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.3; text-wrap: pretty; }
+.rowWho { font-size: 14px; line-height: 1.35; color: var(--c-ink-2); }
+.rowRole { color: var(--c-mute); }
+.rowSolves { font-size: 14px; line-height: 1.35; color: var(--c-mute); text-wrap: pretty;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; } /* a case's body can run long */
+.rowRight { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; padding-top: 2px; }
+.sent { font-size: 14px; color: var(--c-mute); white-space: nowrap; }
+.badge { font-size: 12px; font-weight: 600; border-radius: 999px; padding: 3px 9px; white-space: nowrap; }
+.badge[data-tone="late"] { color: var(--c-late); background: rgb(255 59 48 / 0.12); }
+.badge[data-tone="left"] { color: var(--c-left); background: rgb(0 122 255 / 0.12); }
+.badge[data-tone="paused"] { color: var(--c-mute); background: var(--c-fill); }
+
+.empty { padding: 40px 24px; text-align: center; font-size: 15px; color: var(--c-mute); }
+
+/* The open case. */
+.detail { color: var(--c-ink); }
+.detailHead { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px 14px 24px; border-bottom: 1px solid var(--c-sep-head); }
+.detailTag { font-family: var(--nh-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #7b8794; white-space: nowrap; }
+.close { display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: 1px solid #e6edf1; border-radius: 50%; background: var(--nh-card); color: #7b8794; font-size: 16px; line-height: 1; cursor: pointer; }
+.close:hover { background: #f6f9fa; color: var(--nh-ink); }
+.close:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
+.detailBody { padding: 18px 24px 22px; }
 .selMeta { margin-top: 11px; gap: 9px; }
 .section { margin-top: 18px; }
-.routeTile { margin-top: 9px; }
 .handedNote { font-size: 11.5px; color: var(--nh-ink-2); margin-top: 10px; line-height: 1.5; }
 .q { margin-top: 9px; }
 .a { margin-top: 10px; }
 .pausedNote { font-size: 12px; color: var(--nh-ink-2); margin-top: 16px; line-height: 1.5; }
 .actions { margin-top: 9px; }
-.actionNote { font-size: 11px; color: var(--nh-on-dark-mute); margin-top: 11px; line-height: 1.5; }
 
+@media (min-width: 761px) {
+  .detail { position: sticky; top: 80px; }
+}
+@media (max-width: 900px) {
+  .page[data-picked="true"] .body { grid-template-columns: minmax(0, 1fr); }
+}
 @media (max-width: 760px) {
-  .clock { white-space: normal; text-align: right; max-width: 118px; line-height: 1.35; }
+  .page { gap: 14px; }
+  .top .stat { padding: 12px 16px 11px; }
+  /* A picked row shows the case in place of the list; Close brings the list back. */
+  .page[data-picked="true"] .body > :first-child { display: none; }
+}
+@media (max-width: 560px) {
+  /* The title keeps its line; search and the two buttons take the next one. */
+  .cardHead { flex-wrap: wrap; padding: 14px 16px; }
+  .tools { width: 100%; }
+  .search { flex: 1; width: auto; }
 }
