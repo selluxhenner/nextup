@@ -22,6 +22,7 @@ const claims = (over: Partial<SessionClaims> = {}): SessionClaims => ({
   name: "T. Vogel",
   handle: null,
   role: "leader",
+  ep: 0,
   exp: NOW + SESSION_TTL_SECONDS,
   ...over,
 });
@@ -70,6 +71,20 @@ describe("session cookie", () => {
     const sig = createHmac("sha256", SECRET).update(payload).digest("base64")
       .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
     expect(verifySession(`${payload}.${sig}`, SECRET, NOW)).toBeNull();
+  });
+
+  it("reads a cookie from before the session epoch as epoch 0, and refuses a non-number", () => {
+    const sign = (c: object) => {
+      const payload = Buffer.from(JSON.stringify(c)).toString("base64")
+        .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+      const sig = createHmac("sha256", SECRET).update(payload).digest("base64")
+        .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+      return `${payload}.${sig}`;
+    };
+    const old: Partial<SessionClaims> = claims();
+    delete old.ep;
+    expect(verifySession(sign(old), SECRET, NOW)?.ep).toBe(0);
+    expect(verifySession(sign({ ...old, ep: "1" }), SECRET, NOW)).toBeNull();
   });
 });
 

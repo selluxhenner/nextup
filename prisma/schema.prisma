@@ -50,6 +50,10 @@ model Company {
   // is the audit trail - and it bumps this in the same transaction.
   demoDay Int @default(0)
 
+  // Signed into every session cookie; a cookie with another number is dead. Bumped when the
+  // company changes stage, so a demo visitor's session ends the moment real people move in.
+  sessionEpoch Int @default(0)
+
   // One `Seed` (src/features/demo/types.ts), verbatim. Cloned from a template when the company is
   // created in /admin.
   seedJson Json
