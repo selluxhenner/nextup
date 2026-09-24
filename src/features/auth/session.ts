@@ -10,6 +10,8 @@
 import { cookies } from "next/headers";
 import type { Role } from "@/config/roles";
 import { SESSION_COOKIE, verifySession, type SessionClaims } from "./cookie";
+import { hasDatabase } from "@/lib/db/mode";
+import { sessionStillValid } from "@/lib/db/sessions";
 
 export type Session = { userId: string; companySlug: string; role: Role };
 
@@ -21,6 +23,7 @@ export type Viewer = {
   name: string;
   handle: string | null;
   role: Role;
+  epoch: number;
 };
 
 function toViewer(c: SessionClaims): Viewer {
@@ -31,6 +34,7 @@ function toViewer(c: SessionClaims): Viewer {
     name: c.name,
     handle: c.handle,
     role: c.role,
+    epoch: c.ep,
   };
 }
 
@@ -52,8 +56,16 @@ export async function getSession(): Promise<Session | null> {
  * The viewer, but only if they belong to `slug`. The proxy already redirects, but layouts and
  * server actions re-check: a proxy is routing, not a security boundary, and server actions are
  * not covered by its matcher at all.
+ *
+ * With a database it also asks whether the cookie still describes reality: same company id (a
+ * deleted and re-created slug is a different company), the person still exists with the same role,
+ * and the company's session epoch has not moved (a stage change ends every older session). A
+ * database error counts as "no": fail closed, the login page is the worst case.
  */
 export async function getViewerFor(slug: string): Promise<Viewer | null> {
   const v = await getViewer();
-  return v && v.companySlug === slug ? v : null;
+  if (!v || v.companySlug !== slug) return null;
+  if (!hasDatabase()) return v;
+  const live = await sessionStillValid({ cid: v.companyId, slug, uid: v.userId, role: v.role, ep: v.epoch }).catch(() => false);
+  return live ? v : null;
 }

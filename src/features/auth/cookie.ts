@@ -26,6 +26,7 @@ export type SessionClaims = {
   name: string; // display name; what the event log records as `actor`
   handle: string | null; // anonymous handle for members
   role: Role;
+  ep: number; // Company.sessionEpoch at sign-in - a stage change bumps it and ends this session
   exp: number; // unix seconds
 };
 
@@ -86,6 +87,9 @@ export function verifySession(
   if (typeof c.name !== "string") return null;
   if (!(typeof c.handle === "string" || c.handle === null)) return null;
   if (!isRole(c.role)) return null;
+  // Cookies from before the epoch existed carry none: they count as epoch 0.
+  const ep = c.ep === undefined ? 0 : c.ep;
+  if (typeof ep !== "number") return null;
 
   return {
     v: 1,
@@ -95,6 +99,7 @@ export function verifySession(
     name: c.name,
     handle: c.handle,
     role: c.role,
+    ep,
     exp: c.exp,
   };
 }

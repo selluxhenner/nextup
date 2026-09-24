@@ -671,7 +671,8 @@ export async function setCompanyStageAction(_prev: StageState, form: FormData): 
     };
   }
 
-  await getDb().company.update({ where: { slug }, data: { stage } });
+  // Every session signed before the move ends: a demo visitor must not keep a way into real cases.
+  await getDb().company.update({ where: { slug }, data: { stage, sessionEpoch: { increment: 1 } } });
 
   revalidatePath("/admin", "layout");
   revalidatePath("/", "layout");

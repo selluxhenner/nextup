@@ -42,8 +42,9 @@ Everything below assumes the stack is up (`docker compose up -d`) and `/admin` o
 
 ### 1. Three credentials, made in n8n — never in this repo
 
-Open n8n (`n8n.<domain>`, or the published port). The first visit asks you to create the owner
-account; that account is yours and lives only in the `n8ndata` volume.
+Open n8n (`n8n.<domain>` behind the ops login from `OPS_USER` / `OPS_PASSWORD_HASH`, or the
+published port). The first visit asks you to create the owner account - do it right after the first
+deploy; that account is yours and lives only in the `n8ndata` volume.
 
 | Credential | Type | Value |
 |---|---|---|

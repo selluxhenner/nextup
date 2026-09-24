@@ -61,7 +61,13 @@ AUTH_SECRET=<openssl rand -base64 32>
 ADMIN_ACCESS_CODE=<openssl rand -base64 24>
 ACME_EMAIL=you@serviweb.ch
 HOSTTECH_API_TOKEN=<from the hosttech control panel>
+OPS_USER=ops
+OPS_PASSWORD_HASH='<docker run --rm caddy:2 caddy hash-password --plaintext ...>'
 ```
+
+`OPS_USER` / `OPS_PASSWORD_HASH` put a login in front of `n8n.<domain>` and `mail.<domain>`;
+without them both hosts answer 401. Create the n8n owner account right after the first deploy -
+behind that login nobody else can reach the setup screen first.
 
 **3. Deploy:**
 

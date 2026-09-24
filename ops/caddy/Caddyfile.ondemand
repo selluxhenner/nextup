@@ -22,10 +22,19 @@
 
 	@n8n host n8n.{$APP_DOMAIN}
 	@mail host mail.{$APP_DOMAIN}
+	# Both are ops tools, not the product: nobody reaches them without the ops login. mailpit has
+	# no login of its own, and n8n makes whoever opens it first its owner. An unset OPS_USER or
+	# OPS_PASSWORD_HASH answers 401 to everyone - closed, never open.
 	handle @n8n {
+		basic_auth {
+			{$OPS_USER} {$OPS_PASSWORD_HASH}
+		}
 		reverse_proxy n8n:5678
 	}
 	handle @mail {
+		basic_auth {
+			{$OPS_USER} {$OPS_PASSWORD_HASH}
+		}
 		reverse_proxy mailpit:8025
 	}
 	handle {
