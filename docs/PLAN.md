@@ -83,7 +83,7 @@ Each phase ends with something a teammate can open in a browser. One branch per 
 
 ### Phase 4 - Pilot-ready
 - [ ] A second company in the seed to prove isolation (`tests/db/isolation.test.ts` covers the DB side); per-company logo and accent
-- [ ] Email: invites, password reset, "an item is older than N days" (SMTP exists, used only for pilot replies; case notices go through n8n)
+- [ ] Email: invites, password reset, "an item is older than N days" (SMTP sends case notices to route owners and pilot replies)
 - [x] SSO: Microsoft Entra (#47)
 - [x] Subdomain tenancy via `proxy.ts` (`TENANT_MODE=subdomain`)
 - [ ] Delete `legacy/demo/` and its two CI jobs once the port is complete

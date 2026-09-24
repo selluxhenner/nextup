@@ -54,14 +54,8 @@ services:
       APP_DOMAIN: ${APP_DOMAIN:-localhost}
       PUBLIC_SCHEME: ${PUBLIC_SCHEME:-http}
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
-      # In-network only; n8n is never called over the internet.
-      N8N_HOOK_URL: ${N8N_HOOK_URL:-http://n8n:5678/webhook/nextup/case-raised}
-      N8N_HOOK_TOKEN: ${N8N_HOOK_TOKEN:-}
-      # Sent with every notice, so n8n writes back to THIS app rather than to whichever address
-      # it happens to have in its own environment. A server started outside this stack overrides
-      # it - see .env.example.
-      N8N_CALLBACK_BASE: ${N8N_CALLBACK_BASE:-http://app:3000}
-      # "Send reply" on a pilot request in /admin. mailpit catches it; point at a real relay to deliver.
+      # Case notices to route owners, and "Send reply" on a pilot request in /admin. mailpit
+      # catches both; point at a real relay to deliver.
       SMTP_URL: ${SMTP_URL:-smtp://mailpit:1025}
       MAIL_FROM: ${MAIL_FROM:-}
     depends_on:
@@ -95,13 +89,6 @@ services:
     # office network can. In production Caddy serves n8n.<domain> and this changes nothing.
     ports:
       - "127.0.0.1:5678:5678"
-      # n8n blocks $env inside expressions by default. The write-back node's URL is
-      # `{{ $env.NEXTUP_BASE }}/api/{{ ... }}/events`, so without this every run fails at that
-      # node with "access to env vars denied" - the owner still gets the email, the case never
-      # hears about it. The only env this container has is what is set right here.
-      N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
-      # Where workflows call back to. Service name, not a public URL.
-      NEXTUP_BASE: http://app:3000
     volumes:
       - n8ndata:/home/node/.n8n
       - ./ops/n8n:/data/workflows:ro

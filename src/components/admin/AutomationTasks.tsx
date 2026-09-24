@@ -1,5 +1,5 @@
 "use client";
-// Every raise and what n8n did about it, with the one repair this page can offer: send it again.
+// Every raise and whether its owner was emailed, with the one repair this page can offer: send it again.
 //
 // Client, unlike the summary next door, only because the retry button needs useActionState. The
 // list itself is still props in, JSX out - the states were decided in features/integrations/tasks.
@@ -11,8 +11,8 @@ import styles from "@/app/admin/admin.module.css";
 const LABEL: Record<AutomationTask["state"], string> = {
   done: "notified",
   skipped: "no owner",
-  pending: "running",
-  failed: "no answer",
+  pending: "sending",
+  failed: "not sent",
 };
 
 export function AutomationTasks({ tasks }: { tasks: AutomationTaskView[] }) {
@@ -30,7 +30,7 @@ export function AutomationTasks({ tasks }: { tasks: AutomationTaskView[] }) {
       ) : null}
       {retry.ok ? (
         <p className={styles.sent} role="status">
-          Sent again. n8n took it; reload in a moment to see whether it wrote back.
+          Sent. The owner has the email and the case says so.
         </p>
       ) : null}
 

@@ -190,7 +190,7 @@
 .fill:hover { border-color: var(--nh-brand, #2563eb); color: var(--nh-brand, #2563eb); }
 .fill:focus-visible { outline: 2px solid var(--nh-brand, #2563eb); outline-offset: 2px; }
 
-/* Automation card: the n8n verdict, its dot, and the three environment facts under it. */
+/* Case notices card: the verdict, its dot, and the facts under it. */
 .verdict {
   display: flex;
   align-items: center;

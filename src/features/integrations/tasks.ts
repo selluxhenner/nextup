@@ -1,16 +1,16 @@
-// One raise = one automation task, and what became of it. Pure - no database, no next/*, no
-// node:* - so every verdict here is unit-tested without a server.
+// One raise = one notice task, and what became of it. Pure - no database, no next/*, no node:* -
+// so every verdict here is unit-tested without a server.
 //
-// The pairing is exact rather than guessed: the workflow's write-back sends
-// `Idempotency-Key: notify:<eventId>` (ops/n8n/case-raised-notify-owner.json), so a raise and its
-// notice are joined on that key, not on "a comment that showed up around the same time".
+// The pairing is exact rather than guessed: the note written onto the case carries the
+// idempotency key `notify:<eventId>` (features/cases/notice.ts), so a raise and its notice are
+// joined on that key, not on "a comment that showed up around the same time".
 //
-// The states exist to separate the two things that look identical in a count - a raise n8n
-// deliberately ignored because the route has no owner, and one it should have answered and did
-// not. Only the second is a problem, and only the second is worth retrying.
+// The states exist to separate the two things that look identical in a count - a raise with
+// nobody to notify because the route has no owner, and one whose owner should have been emailed
+// and was not. Only the second is a problem, and only the second is worth retrying.
 
 export type TaskInput = {
-  /** The case.raised event. Also the idempotency key n8n answers with. */
+  /** The case.raised event. Its notice's idempotency key is derived from it. */
   eventId: string;
   slug: string;
   companyName: string;
@@ -20,16 +20,16 @@ export type TaskInput = {
   ownerName: string | null;
   ownerEmail: string | null;
   raisedAt: string;
-  /** When the write-back landed, or null if nothing ever came back. */
+  /** When the notice was written onto the case, or null if it never was. */
   noticeAt: string | null;
 };
 
 export type TaskState =
-  /** n8n answered: the owner was emailed and the case says so. */
+  /** The owner was emailed and the case says so. */
   | "done"
-  /** No route owner, so the workflow's IF sent it down the "Nothing to do" branch. Correct. */
+  /** No route owner with an address, so there was nobody to email. Correct. */
   | "skipped"
-  /** Raised moments ago - n8n may still be running. */
+  /** Raised moments ago - the mail may still be on its way. */
   | "pending"
   /** Old enough that silence means something went wrong. */
   | "failed";
@@ -37,7 +37,7 @@ export type TaskState =
 export type AutomationTask = TaskInput & {
   state: TaskState;
   explain: string;
-  /** Raise to write-back, in milliseconds. Null unless both ends exist. */
+  /** Raise to notice, in milliseconds. Null unless both ends exist. */
   tookMs: number | null;
   /** Whether re-sending the notice is a sensible thing to offer. */
   retryable: boolean;
@@ -65,7 +65,7 @@ export function classify(t: TaskInput, now: number): AutomationTask {
       tookMs: took >= 0 ? took : null,
       explain:
         took >= 0
-          ? `${t.ownerName ?? "The owner"} notified, written back after ${seconds(took)}.`
+          ? `${t.ownerName ?? "The owner"} notified after ${seconds(took)}.`
           : `${t.ownerName ?? "The owner"} notified.`,
       retryable: false,
     };
@@ -78,7 +78,7 @@ export function classify(t: TaskInput, now: number): AutomationTask {
       tookMs: null,
       explain: t.ownerName
         ? `${t.ownerName} owns this route but has no email address, so there was nobody to write to.`
-        : "No owner on this route - n8n had nothing to notify, which is correct.",
+        : "No owner on this route - nobody to notify, which is correct.",
       retryable: false,
     };
   }
@@ -89,7 +89,7 @@ export function classify(t: TaskInput, now: number): AutomationTask {
       ...t,
       state: "pending",
       tookMs: null,
-      explain: `Raised ${seconds(waited)} ago - n8n may still be running.`,
+      explain: `Raised ${seconds(waited)} ago - the mail may still be on its way.`,
       retryable: false,
     };
   }
@@ -98,7 +98,7 @@ export function classify(t: TaskInput, now: number): AutomationTask {
     ...t,
     state: "failed",
     tookMs: null,
-    explain: `Nothing came back after ${seconds(waited)}. The webhook did not arrive, the workflow is inactive, or one of its nodes failed.`,
+    explain: `No notice after ${seconds(waited)}. The mail server was down or refused it, or SMTP_URL was not set when the case was raised.`,
     retryable: true,
   };
 }
@@ -124,11 +124,11 @@ export function countByState(tasks: readonly AutomationTask[]): TaskCounts {
 /** The line above the list. Leads with what is wrong, because that is why anyone opens this. */
 export function describeTasks(counts: TaskCounts): string {
   const total = counts.done + counts.skipped + counts.pending + counts.failed;
-  if (total === 0) return "No case has been raised yet, so n8n has had nothing to do.";
+  if (total === 0) return "No case has been raised yet, so nobody has been notified.";
 
   const parts: string[] = [];
-  if (counts.failed) parts.push(`${counts.failed} never came back`);
-  if (counts.pending) parts.push(`${counts.pending} still running`);
+  if (counts.failed) parts.push(`${counts.failed} not notified`);
+  if (counts.pending) parts.push(`${counts.pending} still sending`);
   if (counts.done) parts.push(`${counts.done} notified`);
   if (counts.skipped) parts.push(`${counts.skipped} with no owner to notify`);
   return `${total} ${total === 1 ? "raise" : "raises"}: ${parts.join(", ")}.`;

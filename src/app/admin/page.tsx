@@ -85,7 +85,7 @@ export default async function AdminOverview() {
           <div className={styles.quick}>
             <a className="nh-btn nh-btn-ghost" href={`${base}/companies#new`}>Add a company</a>
             <a className="nh-btn nh-btn-ghost" href={`${base}/requests?view=all`}>Search requests</a>
-            <a className="nh-btn nh-btn-ghost" href={`${base}/connections#automation`}>Check n8n</a>
+            <a className="nh-btn nh-btn-ghost" href={`${base}/connections#automation`}>Check notices</a>
           </div>
         </section>
       ) : null}

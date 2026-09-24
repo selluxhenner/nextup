@@ -43,13 +43,23 @@ describe("adminNav", () => {
   it("puts the worst connection problem on the Connections badge", () => {
     expect(item({ ...base, database: "down", automation: null, tasks: null }, "connections")).toMatchObject({ badge: "db down", tone: "bad" });
     expect(item({ ...base, tasks: counts({ failed: 3, pending: 1 }) }, "connections")).toMatchObject({ badge: "3 stuck", tone: "bad" });
-    expect(item({ ...base, tasks: counts({ pending: 1 }) }, "connections")).toMatchObject({ badge: "1 running", tone: "warn" });
-    expect(item({ ...base, automation: "idle" }, "connections")).toMatchObject({ badge: "n8n idle", tone: "warn" });
+    expect(item({ ...base, tasks: counts({ pending: 1 }) }, "connections")).toMatchObject({ badge: "1 sending", tone: "warn" });
+    expect(item({ ...base, automation: "idle" }, "connections")).toMatchObject({ badge: "notices idle", tone: "warn" });
     expect(item({ ...base, mail: "down" }, "connections")).toMatchObject({ badge: "mail down", tone: "bad" });
   });
 
   it("does not count mail that is simply not configured - replies fall back to a mail app", () => {
     expect(connectionProblems({ ...base, mail: "off" })).toEqual([]);
+  });
+
+  it("says a dead relay once, not again as notices down - notices go out through it", () => {
+    expect(connectionProblems({ ...base, automation: "unreachable", mail: "down" })).toEqual([
+      { badge: "mail down", tone: "bad" },
+    ]);
+  });
+
+  it("warns when notices are off, because then a raise tells nobody", () => {
+    expect(item({ ...base, automation: "off", mail: "off" }, "connections")).toMatchObject({ badge: "notices off", tone: "warn" });
   });
 
   it("lists bad before warn", () => {

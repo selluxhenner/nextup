@@ -1,50 +1,37 @@
-// What /admin needs to answer "is n8n actually working?": the credential each company was given,
-// and what has come back from it.
+// What /admin needs to answer "are route owners actually being told?": how many notices each
+// company has had written onto its cases, and which raise each one answers.
 //
-// Both queries name their companies. CaseEvent and ApiToken are tenant tables, so scope.ts
-// refuses an unscoped read - and rightly: "every company" is an admin intention, not a property
-// of the query. The caller passes the ids it already listed, and `companyId: { in: ids }` is what
-// the guard checks for.
+// Both queries name their companies. CaseEvent is a tenant table, so scope.ts refuses an unscoped
+// read - and rightly: "every company" is an admin intention, not a property of the query. The
+// caller passes the ids it already listed, and `companyId: { in: ids }` is what the guard checks.
 import type { CompanyAutomation } from "@/features/integrations/automation";
+import { NOTICE_SOURCES, noticeKey } from "@/features/cases/notice";
 import { getDb } from "./client";
 
-/** One row per company id given, in that order. Ids that do not exist are skipped. */
+/** A notice: the note written onto a case once its owner was emailed (features/cases/notice.ts). */
+const isNotice = { source: { in: [...NOTICE_SOURCES] }, idemKey: { startsWith: noticeKey("") } };
+
+/** One row per company given, in that order. */
 export async function automationFor(
   companies: readonly { id: string; slug: string; name: string }[],
 ): Promise<CompanyAutomation[]> {
   if (companies.length === 0) return [];
-  const ids = companies.map((c) => c.id);
 
-  const [tokens, written] = await Promise.all([
-    getDb().apiToken.findMany({
-      where: { companyId: { in: ids }, name: "n8n" },
-      orderBy: { createdAt: "desc" },
-      select: { companyId: true, createdAt: true, lastUsedAt: true },
-    }),
-    // Events appended as system:n8n - the workflow writing the notice back onto the case.
-    getDb().caseEvent.groupBy({
-      by: ["companyId"],
-      where: { companyId: { in: ids }, source: "n8n" },
-      _count: { _all: true },
-      _max: { ts: true },
-    }),
-  ]);
-
-  // Newest first from the query, so the first token seen for a company is its current one.
-  const newestToken = new Map<string, (typeof tokens)[number]>();
-  for (const t of tokens) if (!newestToken.has(t.companyId)) newestToken.set(t.companyId, t);
+  const written = await getDb().caseEvent.groupBy({
+    by: ["companyId"],
+    where: { companyId: { in: companies.map((c) => c.id) }, ...isNotice },
+    _count: { _all: true },
+    _max: { ts: true },
+  });
   const byCompany = new Map(written.map((w) => [w.companyId, w]));
 
   return companies.map((c) => {
-    const token = newestToken.get(c.id);
     const w = byCompany.get(c.id);
     return {
       slug: c.slug,
       name: c.name,
-      tokenCreatedAt: token?.createdAt.toISOString() ?? null,
-      tokenLastUsedAt: token?.lastUsedAt?.toISOString() ?? null,
-      writeBacks: w?._count._all ?? 0,
-      lastWriteBackAt: w?._max.ts?.toISOString() ?? null,
+      notices: w?._count._all ?? 0,
+      lastNoticeAt: w?._max.ts?.toISOString() ?? null,
     };
   });
 }
@@ -60,10 +47,10 @@ export type RaiseRow = {
 };
 
 /**
- * The last `limit` raises across the companies given, each paired with its write-back.
+ * The last `limit` raises across the companies given, each paired with its notice.
  *
- * The join is on the idempotency key the workflow sends back (`notify:<eventId>`), so a raise is
- * matched to its own notice and to no other. Two queries rather than a relation: CaseEvent has no
+ * The join is on the notice's idempotency key (`notify:<eventId>`), so a raise is matched to its
+ * own notice and to no other. Two queries rather than a relation: CaseEvent has no
  * self-relation, and inventing one for this would be a schema change.
  */
 export async function raisesFor(
@@ -84,8 +71,8 @@ export async function raisesFor(
   const notices = await getDb().caseEvent.findMany({
     where: {
       companyId: { in: ids },
-      source: "n8n",
-      idemKey: { in: raises.map((r) => "notify:" + r.id) },
+      source: { in: [...NOTICE_SOURCES] },
+      idemKey: { in: raises.map((r) => noticeKey(r.id)) },
     },
     select: { idemKey: true, ts: true },
   });
@@ -97,12 +84,12 @@ export async function raisesFor(
     caseId: r.targetId,
     payload: r.payload,
     raisedAt: r.ts.toISOString(),
-    noticeAt: noticeAt.get("notify:" + r.id)?.toISOString() ?? null,
+    noticeAt: noticeAt.get(noticeKey(r.id))?.toISOString() ?? null,
   }));
 }
 
 /** How many cases have been raised across these companies. Cheap, and it is what tells the
- *  Automation card apart from "nothing raised yet" and "raised, but n8n never answered". */
+ *  notices card apart from "nothing raised yet" and "raised, but nobody was emailed". */
 export async function raiseCountFor(companyIds: readonly string[]): Promise<number> {
   if (companyIds.length === 0) return 0;
   return getDb().caseEvent.count({

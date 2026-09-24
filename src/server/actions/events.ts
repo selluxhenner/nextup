@@ -14,7 +14,9 @@ import { getDb, hasDatabase } from "@/lib/db/client";
 import { issueSession } from "@/server/issue-session";
 import { parseSeed } from "@/features/demo/parse";
 import { policyFor } from "@/features/admin/stages";
-import { apiBaseForN8n, buildRaisedNotice, companyBaseUrl, notifyCaseRaised } from "@/server/notify-n8n";
+import { buildRaisedNotice } from "@/features/cases/notice";
+import { companyBaseUrl, notifyCaseRaised } from "@/server/case-notice";
+import { mailConfigured } from "@/server/mail";
 
 // Same ceiling as the integration endpoint (features/integrations MAX_PAYLOAD_BYTES): one event
 // is a title, a body and a few ids, never a file.
@@ -76,7 +78,7 @@ export async function appendEventAction(input: AppendInput): Promise<AppendOutco
   );
   if (!result.ok) return { ok: false, error: result.error };
 
-  // Tell n8n, but only after the row is safely committed, and never block on it.
+  // Email the route owner, but only after the row is safely committed, and never block on it.
   if (type === "case.raised" && target) {
     void notifyRaised(slug, viewer.companyId, id, target, payload);
   }
@@ -86,7 +88,7 @@ export async function appendEventAction(input: AppendInput): Promise<AppendOutco
   return { ok: true };
 }
 
-/** Resolve the route owner here rather than in n8n, and hand over a ready-to-send message. */
+/** Resolve the route owner and send them the notice. */
 async function notifyRaised(
   slug: string,
   companyId: string,
@@ -94,7 +96,7 @@ async function notifyRaised(
   caseId: string,
   payload: EventPayload,
 ): Promise<void> {
-  if (!process.env.N8N_HOOK_URL) return;
+  if (!mailConfigured()) return;
   try {
     const company = await getDb().company.findUnique({
       where: { slug },
@@ -102,6 +104,7 @@ async function notifyRaised(
     });
     if (!company) return;
     notifyCaseRaised(
+      companyId,
       buildRaisedNotice({
         slug,
         eventId,
@@ -111,7 +114,6 @@ async function notifyRaised(
         people: company.users,
         day: company.demoDay,
         baseUrl: companyBaseUrl(slug),
-        apiBase: apiBaseForN8n(),
       }),
     );
   } catch {

@@ -1,5 +1,5 @@
-// What each raise's state means. The distinction that matters: a raise n8n correctly ignored
-// (no route owner) must never look like one it failed to answer, or /admin cries wolf.
+// What each raise's state means. The distinction that matters: a raise with nobody to notify
+// (no route owner) must never look like one whose owner was not told, or /admin cries wolf.
 import { describe, expect, it } from "vitest";
 import {
   classify,
@@ -26,7 +26,7 @@ const raise = (over: Partial<TaskInput> = {}): TaskInput => ({
 });
 
 describe("classify", () => {
-  it("is done when the write-back landed, and says how long it took", () => {
+  it("is done when the notice landed, and says how long it took", () => {
     const t = classify(raise({ raisedAt: ago(60_000), noticeAt: ago(57_000) }), NOW);
     expect(t.state).toBe("done");
     expect(t.tookMs).toBe(3000);
@@ -38,7 +38,7 @@ describe("classify", () => {
     const t = classify(raise({ ownerName: null, ownerEmail: null, raisedAt: ago(86_400_000) }), NOW);
     expect(t.state).toBe("skipped");
     expect(t.explain).toContain("correct");
-    // Nothing to repair: re-sending would take the same "Nothing to do" branch.
+    // Nothing to repair: re-sending would find the same missing owner.
     expect(t.retryable).toBe(false);
   });
 
@@ -66,7 +66,7 @@ describe("classify", () => {
 
 describe("describeTasks", () => {
   it("says so when nothing has been raised", () => {
-    expect(describeTasks(countByState([]))).toContain("nothing to do");
+    expect(describeTasks(countByState([]))).toContain("nobody has been notified");
   });
 
   it("leads with what is wrong", () => {
@@ -77,6 +77,7 @@ describe("describeTasks", () => {
     ];
     const line = describeTasks(countByState(tasks));
     expect(line).toContain("3 raises");
-    expect(line.indexOf("never came back")).toBeLessThan(line.indexOf("notified"));
+    expect(line.indexOf("1 not notified")).toBeGreaterThanOrEqual(0);
+    expect(line.indexOf("1 not notified")).toBeLessThan(line.indexOf("1 notified"));
   });
 });
