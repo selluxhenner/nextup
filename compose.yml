@@ -58,6 +58,13 @@ services:
       # catches both; point at a real relay to deliver.
       SMTP_URL: ${SMTP_URL:-smtp://mailpit:1025}
       MAIL_FROM: ${MAIL_FROM:-}
+      # The raise-page assistant (docs/ASSISTANT.md). Unset = answers built from lookups, no model.
+      # bedrock = Claude on Amazon Bedrock in LLM_REGION; AWS credentials from the usual chain.
+      LLM_PROVIDER: ${LLM_PROVIDER:-}
+      LLM_REGION: ${LLM_REGION:-eu-central-1}
+      LLM_MODEL: ${LLM_MODEL:-}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
     depends_on:
       db:
         condition: service_healthy

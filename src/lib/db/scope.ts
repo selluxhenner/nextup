@@ -17,6 +17,9 @@ export const TENANT_MODELS = new Set([
   "OrgRoleHolder",
   "RoutingRule",
   "Goal",
+  // Raise-page assistant - docs/ASSISTANT.md
+  "Document",
+  "AssistTurn",
 ]);
 
 /** Operations that must narrow by company through `where`. */
