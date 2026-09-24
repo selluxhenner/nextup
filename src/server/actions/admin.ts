@@ -309,7 +309,7 @@ export async function createApiTokenAction(_prev: TokenState, form: FormData): P
   const company = await getDb().company.findUnique({ where: { slug }, select: { id: true } });
   if (!company) return { error: "No such company." };
 
-  const token = await createToken(company.id, "n8n", ["events:read", "events:write"]);
+  const token = await createToken(company.id, "n8n", ["events:read", "events:write", "knowledge:write"]);
   return { slug, token };
 }
 

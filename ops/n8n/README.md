@@ -51,3 +51,17 @@ Activate it in the UI, or with `n8n update:workflow --id=<id> --active=true` fol
 
 **Strip credential ids and data before committing.** gitleaks runs on every PR, and n8n exports
 carry a `credentials` block on every node - attach credentials by hand after importing.
+
+## `erp-knowledge-sync.json`
+
+Feeds the raise-page assistant (`docs/ASSISTANT.md`). Nightly: read the customer's ERP export, map
+each record to `{source, externalId, title, body, classification}`, and `POST` the batch (≤ 100) to
+`/api/<slug>/knowledge/documents` with the `<slug>-nextup` credential. The token needs the
+`knowledge:write` scope; tokens made in `/admin` include it (older ones do not - make a new one).
+
+- **The ERP node is a placeholder.** Point it at the real export (SAP OData, a database node, a
+  file share) with a `<slug>-erp` credential. Export process and master-data texts, not personal data.
+- **Label every record.** Without `classification` the app stores it as `confidential`, which the
+  assistant cannot read under the default ceiling. `strictly_confidential` is refused outright.
+- **Re-running is safe.** Documents upsert by `(source, externalId)`.
+- The app answers the assistant itself; n8n never sees a question or an answer.
