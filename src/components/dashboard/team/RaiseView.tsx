@@ -6,6 +6,9 @@
 // While nothing is typed the lower card explains how NextUp works; while typing it takes context.
 // Demo: the steps are timed, the facts are real; the screenshots stay in this browser (src/lib/shots.ts,
 // keyed by case id), only their count becomes an event fact.
+// Ask first: Enter sends the line to the assistant (docs/ASSISTANT.md), whose answer takes the lower card.
+// If it does not solve it, "Raise it anyway" runs the evaluation with the conversation as context. With
+// the assistant off for the company, Enter raises straight away, as before.
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
@@ -13,7 +16,11 @@ import { EvalOrb } from "@/components/dashboard/team/EvalOrb";
 import { SITE } from "@/config/site";
 import type { CaseKind } from "@/features/cases/events";
 import { evaluate, type Evaluation } from "@/features/evaluate";
+import { draftRaise } from "@/features/assist/draft";
 import { saveShots, shrinkImage, type Shot } from "@/lib/shots";
+import { useAssist } from "@/lib/use-assist";
+import { linkAssistRaiseAction, rateAssistAction } from "@/server/actions/assist";
+import { AssistAnswer } from "./AssistAnswer";
 import styles from "./RaiseView.module.css";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 
@@ -56,6 +63,9 @@ export function RaiseView() {
   const fileRef = useRef<HTMLInputElement>(null);
   const pickRef = useRef<HTMLDivElement>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const fieldRef = useRef<HTMLTextAreaElement>(null);
+  const raisedFrom = useRef<string | null>(null); // the assistant conversation a raise came out of
+  const { view: ai, ask, reset: resetAi } = useAssist(tenant.slug);
 
   useEffect(() => {
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -72,6 +82,8 @@ export function RaiseView() {
       if (done < ev.steps.length) setPhase({ at: "thinking", ev, done: done + 1 });
       else {
         const id = act.raise(ev.payload);
+        if (raisedFrom.current) void linkAssistRaiseAction({ slug: tenant.slug, sessionId: raisedFrom.current, caseId: id });
+        raisedFrom.current = null;
         if (!saveShots(tenant.slug, id, shots)) showToast("Case raised — the screenshots did not fit in this browser's storage.");
         setPhase({ at: "done", ev, id });
       }
@@ -94,8 +106,9 @@ export function RaiseView() {
   const current = KINDS.find((k) => k.id === kind) ?? KINDS[0];
   const other = kind === "idea" ? "problem" : "idea";
   const locked = phase.at !== "edit";
+  const asking = ai.status === "asking";
   const composing = draft.trim().length > 0;
-  const canSend = draft.trim().length >= MIN_CHARS && !locked;
+  const canSend = draft.trim().length >= MIN_CHARS && !locked && !asking;
   const words = context.trim() ? context.trim().split(/\s+/).length : 0;
 
   // Who it also hits: the org chart and the departments, searched by name, role or department.
@@ -127,15 +140,37 @@ export function RaiseView() {
   const toggleKind = () => { setKind(other); setSwitches((n) => n + 1); };
   const toggleAffected = (id: string) => setAffected((a) => (a.includes(id) ? a.filter((x) => x !== id) : [...a, id]));
   const addPrompt = (label: string) => setContext((c) => (c.trim() ? c.replace(/\s*$/, "") + "\n" + label + ": " : label + ": "));
-  const send = () => {
-    if (!canSend) return;
+  const evaluateNow = (text: string, ctxText: string) => {
     setPickOpen(false);
-    const ev = evaluate({ kind, text: draft, context, affected, attachments: shots.length, who }, { ...seed, cases: S.cases });
+    const ev = evaluate({ kind, text, context: ctxText, affected, attachments: shots.length, who }, { ...seed, cases: S.cases });
     setPhase({ at: "thinking", ev, done: 0 });
+  };
+  const send = () => { if (canSend) evaluateNow(draft, context); };
+  // Enter / ↑: ask the assistant first; raise directly only when it is off for this company.
+  const primary = () => {
+    if (!canSend) return;
+    if (!ai.available) return send();
+    setPickOpen(false);
+    void ask(draft.trim()).then((r) => { if (r === "off") send(); });
+  };
+  const raiseAnyway = () => {
+    const d = draftRaise(ai.turns.length ? ai.turns : [{ role: "user", text: ai.question || draft }]);
+    const text = d.title || draft, ctxText = [context.trim(), d.context].filter(Boolean).join("\n");
+    raisedFrom.current = ai.turns.length ? ai.sessionId : null;
+    setDraft(text); setContext(ctxText);
+    resetAi();
+    evaluateNow(text, ctxText);
   };
   const reset = () => {
     setDraft(""); setContext(""); setShots([]); setAffected([]); setPickQuery(""); setPickPages({}); setOpenDept(null); setPickOpen(false); setPhase({ at: "edit" });
+    resetAi();
   };
+  const solved = () => {
+    if (ai.turnId) void rateAssistAction({ slug: tenant.slug, turnId: ai.turnId, helpful: true });
+    showToast("Glad that sorted it.");
+    reset();
+  };
+  const askMore = () => { setDraft(""); fieldRef.current?.focus(); };
 
   const pickRow = (it: Pick) => {
     const on = affected.includes(it.id);
@@ -158,7 +193,7 @@ export function RaiseView() {
     ...affected.map((n) => ({ key: "a:" + n, label: n, remove: () => toggleAffected(n) })),
     ...shots.map((s) => ({ key: "s:" + s.url, label: s.name, thumb: s.url, remove: () => setShots((x) => x.filter((y) => y.url !== s.url)) })),
   ];
-  const hint = locked ? "Raised" : composing ? "Enter to raise" : "";
+  const hint = locked ? "Raised" : asking ? "Looking it up" : composing ? (ai.available ? "Enter to ask" : "Enter to raise") : "";
 
   return (
     <div className={styles.page} data-kind={kind} data-phase={phase.at}>
@@ -180,8 +215,8 @@ export function RaiseView() {
                 </span>
               </button>
               {/* A textarea so a narrow screen can wrap the placeholder onto a second line; Enter still raises, so it stays one line of text. */}
-              <textarea className={styles.field} rows={1} value={draft} onChange={(e) => setDraft(e.target.value.replace(/\s*\n\s*/g, " "))} placeholder={current.placeholder} aria-label={current.label} autoFocus readOnly={locked}
-                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); send(); } }} />
+              <textarea ref={fieldRef} className={styles.field} rows={1} value={draft} onChange={(e) => setDraft(e.target.value.replace(/\s*\n\s*/g, " "))} placeholder={current.placeholder} aria-label={current.label} autoFocus readOnly={locked || asking}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); primary(); } }} />
             </div>
 
             {chips.length > 0 && (
@@ -266,7 +301,7 @@ export function RaiseView() {
                 <span className={styles.hint} aria-live="polite">{hint}</span>
                 <span className={styles.sendRing}>
                   {locked && <span className={styles.pulse} aria-hidden="true" />}
-                  <button type="button" className={styles.send} onClick={send} disabled={!canSend} data-sent={locked ? "true" : undefined} aria-label={"Raise this " + current.label.toLowerCase()} title="Raise it">
+                  <button type="button" className={styles.send} onClick={primary} disabled={!canSend} data-sent={locked ? "true" : undefined} aria-label={ai.available ? "Ask " + SITE.name + " first" : "Raise this " + current.label.toLowerCase()} title={ai.available ? "Ask first" : "Raise it"}>
                     <span className={styles.arrow} aria-hidden="true">↑</span>
                     <span className={styles.check} aria-hidden="true">✓</span>
                   </button>
@@ -281,7 +316,8 @@ export function RaiseView() {
           current) so the card keeps its size while typing and while evaluating. */}
       <div className={styles.card}>
         {(() => {
-          const showHow = phase.at === "edit" && !composing, showCtx = phase.at === "edit" && composing, showEval = phase.at !== "edit";
+          const showAnswer = phase.at === "edit" && ai.status !== "idle";
+          const showHow = phase.at === "edit" && !composing && !showAnswer, showCtx = phase.at === "edit" && composing && !showAnswer, showEval = phase.at !== "edit";
           const state = (on: boolean) => ({ className: styles.state, "data-on": on ? "true" : undefined, inert: !on, "aria-hidden": !on });
           return (
             <>
@@ -320,6 +356,10 @@ export function RaiseView() {
                     {PROMPTS.map((p) => <button key={p} type="button" className={styles.prompt} onClick={() => addPrompt(p)}>{p}</button>)}
                   </div>
                 </div>
+              </section>
+
+              <section {...state(showAnswer)}>
+                {showAnswer && <AssistAnswer view={ai} onSolved={solved} onAskMore={askMore} onRaise={raiseAnyway} />}
               </section>
 
               {/* Evaluating: the orb, the word, and the one step it is on right now; then the receipt. */}

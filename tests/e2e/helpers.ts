@@ -16,12 +16,20 @@ export const test = base.extend<{ failOnPageError: void }>({
 });
 export { expect };
 
-/** Raise a problem from the member home and wait until the evaluation has placed it. */
+/**
+ * Raise a problem from the member home and wait until the evaluation has placed it. ↑ asks the
+ * assistant first (docs/ASSISTANT.md); where it answers, "Raise it anyway" goes on to the raise.
+ * Where it is off for the company, ↑ raises directly.
+ */
 export async function raiseProblem(page: Page, title: string) {
   await page.getByRole("button", { name: /Raising idea/ }).click();
   await page.getByRole("textbox", { name: "Problem" }).fill(title);
-  await page.getByRole("button", { name: "Raise this problem" }).click();
-  await expect(page.getByRole("link", { name: "Open the case" })).toBeVisible({ timeout: 30_000 });
+  await page.getByRole("button", { name: /Ask NextUp first|Raise this problem/ }).click();
+  const anyway = page.getByRole("button", { name: "Raise it anyway" });
+  const placed = page.getByRole("link", { name: "Open the case" });
+  await expect(anyway.or(placed)).toBeVisible({ timeout: 30_000 });
+  if (await anyway.isVisible()) await anyway.click();
+  await expect(placed).toBeVisible({ timeout: 30_000 });
 }
 
 /** The sheet that opens for "No, and why", "Ask a question", "Answer …". */
