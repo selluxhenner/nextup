@@ -79,8 +79,10 @@ src/lib/            db client, small utils.   src/server/actions/  server action
   the file you are in.
 - No `any`. No `// @ts-ignore`. If the types fight you, the shape is wrong —
   fix the shape or ask.
-- No external requests except Google Fonts (already there). No analytics, no
-  third-party scripts, no fetch to outside APIs.
+- No external requests except Google Fonts (already there) and the raise-page
+  assistant's model call (Amazon Bedrock, server-side only, `src/server/assist/`,
+  docs/ASSISTANT.md). No analytics, no third-party scripts, no other fetch to
+  outside APIs.
 - No secrets in code, ever — not even "just for testing".
 
 ## Ownership — who changes what

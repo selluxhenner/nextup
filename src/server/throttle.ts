@@ -20,6 +20,10 @@ export const RULES = {
   adminLogin: { limit: 5, windowMs: 15 * 60_000 },
   /** The public /contact form: a real prospect sends one or two. */
   pilotRequest: { limit: 5, windowMs: 60 * 60_000 },
+  /** Raise-page assistant, per person: a conversation, not a script draining the model budget. */
+  assistAsk: { limit: 20, windowMs: 10 * 60_000 },
+  /** Raise-page assistant, per company from everyone: caps what one company can spend. */
+  assistAskAll: { limit: 600, windowMs: 10 * 60_000 },
 } satisfies Record<string, Rule>;
 
 export type Bucket = keyof typeof RULES;
