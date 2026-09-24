@@ -24,8 +24,11 @@ import { mailStatus } from "@/server/mail";
 export const adminContext = cache(async () => {
   const database = await databaseReport();
   const live = hasDatabase();
+  // The relay is checked once, here, and handed to the notices report rather than asked twice.
   const [companies, requests, automation, tasks, mail] = live
-    ? await Promise.all([listCompanies(), listPilotRequests(), automationReport(), automationTasks(), mailStatus()])
+    ? await mailStatus().then((mail) =>
+        Promise.all([listCompanies(), listPilotRequests(), automationReport(mail), automationTasks(), mail]),
+      )
     : await Promise.all([demoCompanies(), demoPilotRequests(), null, [], mailStatus()]);
 
   const open = requests.filter((r) => !r.handledAt);

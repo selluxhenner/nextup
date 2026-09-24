@@ -1,10 +1,10 @@
-// Outgoing mail, for the one place the app writes to a person directly: answering a pilot request
-// from /admin/requests. Case notices stay with n8n (notify-n8n.ts) - this is not a second channel
-// for those.
+// Outgoing mail, for the two places the app writes to a person directly: telling a route owner a
+// case was raised (case-notice.ts), and answering a pilot request from /admin/requests.
 //
 // SMTP_URL decides where it goes. The compose stack points it at mailpit (smtp://mailpit:1025),
-// which catches everything, so nothing leaves the box until a real relay is configured. Unset, the
-// admin panel falls back to "open in your mail app" and logs the reply by hand.
+// which catches everything, so nothing leaves the box until a real relay is configured. Unset, a
+// raise still saves but notifies nobody, and the admin panel falls back to "open in your mail app"
+// and logs the reply by hand.
 import nodemailer from "nodemailer";
 
 export type MailResult = { ok: true } | { ok: false; error: string };
@@ -45,10 +45,13 @@ function transport(timeoutMs = 4000) {
   } as nodemailer.TransportOptions);
 }
 
-export async function sendMail(msg: { to: string; subject: string; text: string }): Promise<MailResult> {
+export async function sendMail(
+  msg: { to: string; subject: string; text: string },
+  timeoutMs = 4000,
+): Promise<MailResult> {
   if (!mailConfigured()) return { ok: false, error: "SMTP_URL is not set, so the app cannot send mail itself." };
   try {
-    await transport().sendMail({ from: mailFrom(), to: msg.to, subject: msg.subject, text: msg.text });
+    await transport(timeoutMs).sendMail({ from: mailFrom(), to: msg.to, subject: msg.subject, text: msg.text });
     return { ok: true };
   } catch (e) {
     return { ok: false, error: `The mail server did not take it: ${e instanceof Error ? e.message : String(e)}` };

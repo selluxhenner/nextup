@@ -1,6 +1,6 @@
-// Whether the n8n half of the loop is actually running. Read-only: every action that changes
-// anything here is in n8n itself or in the API token button above, so this renders and nothing
-// more - no "use client", no form.
+// Whether route owners are actually being told about new cases. Read-only: the relay is configured
+// in the environment and a missed notice is re-sent from the task list below, so this renders and
+// nothing more - no "use client", no form.
 import { describeCompany, type AutomationReport } from "@/features/integrations/automation";
 import styles from "@/app/admin/admin.module.css";
 
@@ -28,17 +28,16 @@ export function Automation({ report }: { report: AutomationReport }) {
       {summary.next ? <p className="nh-hint">{summary.next}</p> : null}
 
       <dl className={styles.facts}>
-        <dt>Webhook</dt>
-        <dd>{facts.hookUrl ? <code>{facts.hookUrl}</code> : "not configured"}</dd>
-        <dt>Shared token</dt>
-        <dd>{facts.hookTokenSet ? "set" : "not set - the webhook is unauthenticated"}</dd>
-        <dt>Instance</dt>
+        <dt>Sent through</dt>
         <dd>
-          {facts.reachable === null
-            ? "not checked"
-            : facts.reachable
-              ? "answers /healthz"
-              : "no answer"}
+          {facts.configured ? (
+            <>
+              <code>{facts.target ?? "?"}</code>
+              {facts.reachable ? "" : " (not answering)"}
+            </>
+          ) : (
+            "nothing - SMTP_URL is not set"
+          )}
         </dd>
       </dl>
 
@@ -50,13 +49,10 @@ export function Automation({ report }: { report: AutomationReport }) {
                 <span className={styles.rowName}>{c.name}</span>
                 <span className={styles.rowMeta}>
                   {describeCompany(c)}
-                  {c.lastWriteBackAt ? ` · last ${when(c.lastWriteBackAt)}` : null}
-                  {c.tokenLastUsedAt && !c.lastWriteBackAt
-                    ? ` · token last used ${when(c.tokenLastUsedAt)}`
-                    : null}
+                  {c.lastNoticeAt ? ` · last ${when(c.lastNoticeAt)}` : null}
                 </span>
               </div>
-              <span className={styles.stage}>{c.writeBacks > 0 ? "working" : "waiting"}</span>
+              <span className={styles.stage}>{c.notices > 0 ? "working" : "waiting"}</span>
             </div>
           ))}
         </div>

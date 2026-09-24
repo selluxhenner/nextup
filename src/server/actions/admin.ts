@@ -31,20 +31,16 @@ import { describeDatabase, type DatabaseReport } from "@/features/admin/health";
 import { canMoveStage, isStage, STAGES } from "@/features/admin/stages";
 import { replaceKnowledge } from "@/lib/db/knowledge";
 import { createToken } from "@/lib/db/tokens";
-import {
-  healthUrlFrom,
-  summarise,
-  type AutomationReport,
-  type InstanceFacts,
-} from "@/features/integrations/automation";
+import { summarise, type AutomationReport, type NoticeFacts } from "@/features/integrations/automation";
 import { classify, type AutomationTaskView } from "@/features/integrations/tasks";
-import { apiBaseForN8n, buildRaisedNotice, companyBaseUrl, deliverRaisedNotice } from "@/server/notify-n8n";
+import { buildRaisedNotice } from "@/features/cases/notice";
+import { companyBaseUrl, deliverRaisedNotice } from "@/server/case-notice";
 import { companySeed } from "@/lib/db/companies";
 import type { EventPayload } from "@/features/cases/events";
 import { companyUrl, dashboardUrl, landingUrl } from "@/features/tenant/urls";
 import { DEMO_COMPANIES } from "@/features/tenant/demo-companies";
 import { readEdit, readReply, validateEdit, validateReply, type Reply, type ReplyVia } from "@/features/admin/requests";
-import { sendMail } from "@/server/mail";
+import { sendMail, type MailStatus } from "@/server/mail";
 import { secureCookies } from "@/server/issue-session";
 import { clientKey, forgive, throttle } from "@/server/throttle";
 import type { Role } from "@/config/roles";
@@ -454,49 +450,26 @@ export async function deletePilotRequestAction(_prev: DeleteRequestState, form: 
   redirect(adminHome() + "/requests");
 }
 
-// ── Automation (n8n) ─────────────────────────────────────────────────────────
-// /admin is where the integration is set up - the API token is issued here - so it is also where
-// "is it actually working?" belongs. The app has no n8n API key (ops/n8n/README.md keeps
-// credentials in the n8n UI and out of this repo), so the answer is assembled from two things it
-// can see for itself: whether the instance answers /healthz, and what has come back as
-// system:n8n. The wording lives in features/integrations/automation.ts and is unit-tested.
+// ── Case notices ─────────────────────────────────────────────────────────────
+// When a case is raised the app emails the route owner and notes it on the case
+// (server/case-notice.ts). "Is it working?" is assembled from the relay check the Mail card already
+// made and from the notes that exist. The wording lives in features/integrations/automation.ts
+// and is unit-tested.
 
-/** Ping n8n. Never throws and never waits long - the admin page must render either way. */
-async function pingInstance(hookUrl: string | null): Promise<boolean | null> {
-  const health = healthUrlFrom(hookUrl);
-  if (!health) return null;
-
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 1500);
-  try {
-    const res = await fetch(health, { signal: controller.signal, cache: "no-store" });
-    return res.ok;
-  } catch {
-    return false;
-  } finally {
-    clearTimeout(timeout);
-  }
-}
-
-export async function automationReport(): Promise<AutomationReport | null> {
+/** Takes the relay status rather than checking it again - adminContext already asked once. */
+export async function automationReport(mail: Pick<MailStatus, "configured" | "reachable" | "target">): Promise<AutomationReport | null> {
   if (!(await isAdmin()) || !hasDatabase()) return null;
 
-  const hookUrl = process.env.N8N_HOOK_URL ?? null;
   const companies = await getDb().company.findMany({
     orderBy: { createdAt: "desc" },
     select: { id: true, slug: true, name: true },
   });
-  const [rows, raises, reachable] = await Promise.all([
+  const [rows, raises] = await Promise.all([
     automationFor(companies),
     raiseCountFor(companies.map((c) => c.id)),
-    pingInstance(hookUrl),
   ]);
 
-  const facts: InstanceFacts = {
-    hookUrl,
-    hookTokenSet: Boolean(process.env.N8N_HOOK_TOKEN),
-    reachable,
-  };
+  const facts: NoticeFacts = { configured: mail.configured, reachable: mail.reachable, target: mail.target };
   return { facts, companies: rows, summary: summarise(facts, rows, raises) };
 }
 
@@ -516,10 +489,10 @@ function stamp(iso: string): string {
 }
 
 /**
- * Every raise and what the automation did about it, newest first.
+ * Every raise and whether its owner was told, newest first.
  *
- * The owner is resolved with buildRaisedNotice - the same function that builds the real message -
- * so this page cannot disagree with what was actually sent about who owns a route.
+ * The owner is resolved with buildRaisedNotice - the same function the real notice uses - so this
+ * page cannot disagree with what was actually sent about who owns a route.
  */
 export async function automationTasks(limit = 25): Promise<AutomationTaskView[]> {
   if (!(await isAdmin()) || !hasDatabase()) return [];
@@ -547,7 +520,6 @@ export async function automationTasks(limit = 25): Promise<AutomationTaskView[]>
           people: company.users,
           day: company.demoDay,
           baseUrl: companyBaseUrl(company.slug),
-          apiBase: apiBaseForN8n(),
         })
       : null;
 
@@ -572,12 +544,11 @@ export async function automationTasks(limit = 25): Promise<AutomationTaskView[]>
 export type RetryState = { eventId?: string; ok?: boolean; error?: string };
 
 /**
- * Send one raise to n8n again, and say what came back.
+ * Email one raise's owner again, and say what came back.
  *
- * Safe to press twice: the workflow writes back with `Idempotency-Key: notify:<eventId>`, so a
- * second successful run answers 200 {"duplicate": true} and appends no second comment
- * (docs/INTEGRATIONS.md). Unlike the raise path this awaits the answer - the whole point is to
- * see the failure.
+ * Safe to press twice: a notice already on the case (idempotency key notify:<eventId>) is found
+ * first, so the owner is not mailed a second time. Unlike the raise path this awaits the answer -
+ * the whole point is to see the failure.
  */
 export async function retryNoticeAction(_prev: RetryState, form: FormData): Promise<RetryState> {
   if (!(await isAdmin())) return { error: "Not signed in to the admin area." };
@@ -599,6 +570,7 @@ export async function retryNoticeAction(_prev: RetryState, form: FormData): Prom
   if (!event) return { eventId, error: "That raise is no longer in the log." };
 
   const result = await deliverRaisedNotice(
+    company.id,
     buildRaisedNotice({
       slug,
       eventId: event.id,
@@ -608,9 +580,8 @@ export async function retryNoticeAction(_prev: RetryState, form: FormData): Prom
       people: company.users,
       day: company.demoDay,
       baseUrl: companyBaseUrl(slug),
-      apiBase: apiBaseForN8n(),
     }),
-    8000, // A person is watching this one, so give n8n longer than the raise path does.
+    8000, // A person is watching this one, so give the relay longer than the raise path does.
   );
 
   if (!result.ok) return { eventId, error: result.error };

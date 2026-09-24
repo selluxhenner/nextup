@@ -4,141 +4,50 @@ Exported as JSON and committed, because otherwise n8n is untracked state nobody 
 (`docs/INTEGRATIONS.md`). One self-hosted instance serves every company; workflows read the
 company from the payload.
 
-## `case-raised-notify-owner.json`
+## Case notices are no longer here
 
-The first workflow, and the only one until it runs end to end.
+Until 23 Sep 2026 `case-raised-notify-owner.json` emailed the route owner when a case was raised:
+the app POSTed a webhook, n8n sent the mail, then wrote *"Route owner notified by email."* back
+through the events API. That took three credentials made by hand in the n8n UI, a callback address
+that differed per environment, and a failure anywhere in the chain looked the same from `/admin`.
+
+The app now does it itself (`src/server/case-notice.ts`): it sends the mail through `SMTP_URL` and
+writes the same note onto the case, with the same idempotency key `notify:<raiseId>`. Notes the
+old workflow wrote still count as answered on `/admin` → Connections. If the workflow is still
+imported in your instance, deactivate or delete it - nothing calls it any more.
+
+## What n8n is still for
+
+Anything that happens later rather than while someone waits: deadline → deputy, digests,
+connectors. A workflow reads and writes the app through the two endpoints in
+`docs/INTEGRATIONS.md`:
 
 ```
-app: case.raised commits
-  -> POST http://n8n:5678/webhook/nextup/case-raised   (in-network, X-NextUp-Token)
-     -> is it a raise, and does the route have an owner?
-        -> compose the message from the facts the app sent
-        -> email the owner            (SMTP credential <slug>-smtp -> mailpit in the demo stack)
-        -> POST back case.commented   (to the payload's apiBase, bearer <slug>-nextup,
-                                        Idempotency-Key: the event id)
+GET  /api/<slug>/events?since=<cursor>   read the event log
+POST /api/<slug>/events                  append case.commented / case.handed as system:n8n
 ```
 
-**The app resolves the route owner, not n8n.** The webhook body already carries the case, the
-owner's name and address, the deputy, the due day and deep links. Keeping n8n dumb avoids a second
-endpoint whose only job is exposing the routing table.
+Both take `Authorization: Bearer <token>`. Issue one per company in `/admin` → Companies → **API
+token**, and store it in n8n as a Header Auth credential named `<slug>-nextup`. A token used
+against another company answers 403, by design. Send an `Idempotency-Key` header on every POST so
+a re-run answers `200 {"duplicate": true}` and writes no second row.
 
-**Re-running is safe.** The write-back uses the event id as its `Idempotency-Key`, so a replay
-answers `200 {"duplicate": true}` and writes no row.
+## Importing and exporting
 
-### Push, not poll — and why that differs from the doc
-
-`docs/INTEGRATIONS.md` chose polling because "a Vercel function cannot reliably retry a failed
-webhook". On the Hetzner box the app and n8n share a Docker network, so this is one in-network hop
-and the owner hears about it while people are still in the room. Reliability is handled by never
-blocking: the POST happens after the row commits, is not awaited, and every failure is swallowed —
-n8n being down cannot break the core loop, which is the rule that doc actually cares about.
-
-`GET /api/[company]/events?since=<cursor>` is still there, so a catch-up workflow can be added
-later without changing anything here.
-
-## Setting it up
-
-Everything below assumes the stack is up (`docker compose up -d`) and `/admin` opens.
-
-### 1. Three credentials, made in n8n — never in this repo
-
-Open n8n (`n8n.<domain>` behind the ops login from `OPS_USER` / `OPS_PASSWORD_HASH`, or the
-published port). The first visit asks you to create the owner account - do it right after the first
+Open n8n at `n8n.<domain>` (behind the ops login from `OPS_USER` / `OPS_PASSWORD_HASH`) or on the
+published port. The first visit asks you to create the owner account - do it right after the first
 deploy; that account is yours and lives only in the `n8ndata` volume.
-
-| Credential | Type | Value |
-|---|---|---|
-| `nextup-webhook` | Header Auth | name `x-nextup-token`, value = `N8N_HOOK_TOKEN` from `.env` |
-| `<slug>-nextup` | Header Auth | name `Authorization`, value `Bearer <token>` — `/admin` → **API token** |
-| `<slug>-smtp` | SMTP | host `mailpit`, port `1025`, no user, no password, TLS off |
-
-The webhook credential is what makes the endpoint answer 403 to anything that is not us. The
-`<slug>-nextup` one is how the workflow writes back, and it is scoped to that one company: used
-against another company the API answers 403, by design.
-
-### 2. Import the workflow and attach the credentials
-
-```bash
-docker compose exec n8n n8n import:workflow --input=/data/workflows/case-raised-notify-owner.json
-```
 
 `./ops/n8n` is mounted read-only at `/data/workflows`, so a `git pull` is enough to update it.
 
-The committed JSON carries **no credential references** — that is deliberate, see below — so after
-importing, open the workflow and set the credential on three nodes:
-
-- **Case raised (webhook)** → `nextup-webhook`
-- **Email the owner** → `<slug>-smtp`
-- **Write it back to the case** → `<slug>-nextup`
-
-### 3. Activate it
-
-A workflow that is imported but not active answers **404** on its production webhook. Toggle it
-active in the UI, or:
-
 ```bash
-docker compose exec n8n n8n update:workflow --id=<id> --active=true
-```
-
-The CLI prints "restart n8n for changes to take effect" — do that (`docker compose restart n8n`),
-otherwise the running process is still serving the old state.
-
-### Exporting after editing in the UI
-
-```bash
+docker compose exec n8n n8n import:workflow --input=/data/workflows/<name>.json
 docker compose exec n8n n8n export:workflow --id=<id> --pretty --output=/data/workflows/out.json
 ```
 
-**Strip credential ids and data before committing.** gitleaks runs on every PR and n8n exports
-carry a `credentials` block on every node. That block is also why step 2 is manual: keeping it out
-of the repo is worth three clicks.
+An imported workflow is inactive, and an inactive workflow's production webhook answers **404**.
+Activate it in the UI, or with `n8n update:workflow --id=<id> --active=true` followed by
+`docker compose restart n8n`.
 
-## Checking it works
-
-1. `/admin` → **API token** for the company; paste it into the `<slug>-nextup` credential.
-2. Raise a case as a member.
-3. n8n → Executions: one run, green.
-4. `mail.<domain>` (Mailpit): the message to the route owner.
-5. Reload the case: the timeline now reads *"Route owner notified by email."*, posted by
-   `system:n8n`.
-6. `/admin` → **Automation tasks**: the raise now reads *"… notified, written back after Ns"*.
-
-A quick check that needs no browser — 403 means active and guarded, 404 means not active:
-
-```bash
-curl -s -o /dev/null -w "%{http_code}
-" -X POST -d '{}' http://localhost:5678/webhook/nextup/case-raised
-```
-
-If nothing arrives, the app logs `[n8n] could not deliver case.raised notice for <slug>` and
-carries on — the case is saved either way. `/admin` → **Automation tasks** lists every raise n8n
-never answered and has a **Send again** button that re-sends one and reports what came back.
-Re-sending is safe: the write-back carries `Idempotency-Key: notify:<eventId>`, so a second
-successful run answers `200 {"duplicate": true}` and writes no second comment.
-
-## Things that will bite you
-
-**The write-back goes to the wrong app** — it should not any more, but this is worth knowing.
-The notice carries `apiBase`, and the workflow writes back to *that*, so the same n8n can answer
-the compose stack one day and a server on your machine the next. Each app says where it can be
-reached via `N8N_CALLBACK_BASE`.
-
-The **address** travels with the notice; the **bearer token does not**. `<slug>-nextup` holds one
-token, and a token minted in one database is not valid in another — point the workflow at a
-different environment without swapping that credential and the write-back answers `401`, the
-email having already gone out. One environment at a time, unless you duplicate the workflow with
-a second credential. If a raise is emailed but the case never hears about it, check
-that value first: inside the container network `localhost` is n8n itself, and a server on your own
-machine is `host.docker.internal:<port>`, which `compose.yml` maps for n8n.
-
-Earlier versions read this from n8n's own `$env.NEXTUP_BASE`, which tied the instance to exactly
-one app and needed `N8N_BLOCK_ENV_ACCESS_IN_NODE=false` to work at all. Both are gone.
-
-**`/api//events` with an empty slug** — `$json` in the write-back node is the *email* node's
-output (`accepted`, `messageId`), not the composed fields. Every reference to the composed values
-has to name the node: `{{ $('Compose the message').item.json.slug }}`. The committed workflow
-already does this; it is easy to undo by accident when editing in the UI.
-
-**Nothing at all, no execution** — the app only calls n8n when `N8N_HOOK_URL` is set. Without it
-`notifyCaseRaised` returns immediately and a raise notifies nobody. `/admin` → **Automation** says
-so in as many words.
+**Strip credential ids and data before committing.** gitleaks runs on every PR, and n8n exports
+carry a `credentials` block on every node - attach credentials by hand after importing.

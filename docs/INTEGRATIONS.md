@@ -23,6 +23,11 @@ outside the app ever touches the database.
 The core loop (raise -> inbox -> answer) must work with n8n down and the LLM down. Both are
 behind per-company flags (see *Stages*), off by default.
 
+> **23 Sep 2026:** the one exception so far is the email to the route owner when a case is raised.
+> It is sent by the app (`src/server/case-notice.ts`) through `SMTP_URL`, not by an n8n workflow:
+> the app already knows the owner and the relay, and a chain of webhook -> mail -> write-back had
+> three places to fail that `/admin` could not tell apart. A raise still never waits on it.
+
 ## The two endpoints
 
 Nothing else is exposed. Both live under `src/app/api/[company]/events/route.ts` and are thin:

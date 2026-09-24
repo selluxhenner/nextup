@@ -1,5 +1,5 @@
-// Connections: everything the app talks to, on one page - Postgres, n8n and what it did, the mail
-// relay, and the server's own configuration. The strip at the top is the verdict for each; the
+// Connections: everything the app talks to, on one page - Postgres, the case notices and what they
+// did, the mail relay, and the server's own configuration. The strip at the top is the verdict for each; the
 // cards below are the detail.
 import { redirect } from "next/navigation";
 import { isAdmin } from "@/server/actions/admin";
@@ -28,7 +28,7 @@ export default async function ConnectionsPage() {
     },
     {
       id: "automation",
-      label: "n8n",
+      label: "Notices",
       value: automationState ?? "needs the database",
       tone: automationState === "live" ? "ok" : automationState === "idle" || automationState === "off" ? "warn" : "bad",
     },
@@ -83,10 +83,10 @@ export default async function ConnectionsPage() {
       </section>
 
       <section className={styles.card} id="automation">
-        <h2>n8n</h2>
+        <h2>Case notices</h2>
         <p className="nh-hint">
-          n8n notifies the route owner when a case is raised, then writes the notice back onto the
-          case. Setting it up: <code>ops/n8n/README.md</code>.
+          When a case is raised the app emails the route owner through the mail relay below, then
+          notes it on the case.
         </p>
         {ctx.automation ? (
           <Automation report={ctx.automation} />
@@ -96,10 +96,10 @@ export default async function ConnectionsPage() {
       </section>
 
       <section className={styles.card} id="tasks">
-        <h2>Automation tasks</h2>
+        <h2>Notice tasks</h2>
         <p className="nh-hint">
-          One row per raise, and what n8n did about it. A raise and its notice are paired by the
-          idempotency key the workflow sends back, so nothing here is guessed.
+          One row per raise, and whether its owner was told. A raise and its notice are paired by
+          the notice&apos;s idempotency key, so nothing here is guessed.
         </p>
         {ctx.automation ? (
           <AutomationTasks tasks={ctx.tasks} />
@@ -110,7 +110,7 @@ export default async function ConnectionsPage() {
 
       <section className={styles.card} id="mail">
         <h2>Mail</h2>
-        <p className="nh-hint">Used by &ldquo;Send reply&rdquo; on a pilot request. Case notices go through n8n, not this.</p>
+        <p className="nh-hint">Sends the case notices above, and &ldquo;Send reply&rdquo; on a pilot request.</p>
         <MailCard status={ctx.mail} />
       </section>
 
