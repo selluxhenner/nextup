@@ -22,7 +22,21 @@ export type AssistView = {
   retentionDays: number; // 0 = nothing is stored (no session, the local demo)
 };
 
-const newSession = () => (globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2) + Date.now().toString(36)).replace(/[^A-Za-z0-9_-]/g, "");
+const newSession = () => {
+  const c = globalThis.crypto;
+  if (c?.randomUUID) return c.randomUUID().replace(/[^A-Za-z0-9_-]/g, "");
+  if (c?.getRandomValues) {
+    const b = new Uint8Array(16);
+    c.getRandomValues(b);
+    // UUID v4 bits
+    b[6] = (b[6] & 0x0f) | 0x40;
+    b[8] = (b[8] & 0x3f) | 0x80;
+    const h = Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
+    const uuid = `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+    return uuid.replace(/[^A-Za-z0-9_-]/g, "");
+  }
+  throw new Error("Secure random source is unavailable");
+};
 const fresh = (available = true): AssistView => ({ status: "idle", available, turns: [], question: "", text: "", sources: [], unsourced: false, note: "", turnId: null, sessionId: newSession(), retentionDays: 0 });
 
 type Done = { turnId: string | null; blocked: boolean; reason?: string; text: string; sources: ShownSource[]; unsourced: boolean; retentionDays: number };
