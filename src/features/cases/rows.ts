@@ -30,6 +30,19 @@ export function dayFormatter(today: Date, demoDay: number): DayFmt {
   };
 }
 
+// When something reached the inbox, by calendar day: the clock time today (only when the real time is
+// known - the demo counts days, so a seed case says "Today"), "Yesterday", the weekday for the rest of
+// the week, "5 Sept" earlier this year, "5 Sept 2025" before that.
+export function sentLabel(sent: Date, now: Date, exact: boolean): string {
+  const startOf = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const diff = Math.round((startOf(now) - startOf(sent)) / 864e5);
+  if (diff <= 0) return exact ? sent.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) : "Today";
+  if (diff === 1) return "Yesterday";
+  if (diff < 7) return sent.toLocaleDateString("en-GB", { weekday: "long" });
+  if (sent.getFullYear() === now.getFullYear()) return sent.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  return sent.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+}
+
 // One case, seen by the person who raised it.
 export function mineRow(c: ReducedCase, day: number, f: DayFmt, promiseDays: number, outcomeDays: number): MineRow {
   const P = promiseDays;

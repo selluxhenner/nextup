@@ -2,31 +2,52 @@
 // TEAM LEADER home: open items addressed to me, sorted by age, one action each - yes /
 // no+why / hand over / ask one question. Port of the INBOX block in legacy/demo/index.html.
 // A manager sees the same list with the ideas waiting on their decision on top.
+// The stats strip, then the "Fresh ideas" card (Claude Design handoff): search,
+// sort (oldest / newest first), filter (all / late / on time), one row per item - who sent it, what it
+// is about, when it came in, the promise clock. Nothing is open until a row is picked; then the case
+// sits beside the list and Close / Escape puts the page back.
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { deskCases, inboxIdeas, inboxSorted, openCases, problemOf } from "@/components/dashboard/derive";
-import { Avatar, Btn, Empty, Pill, reasonTone, type Tone } from "@/components/dashboard/shared/primitives";
-import { ViewHead } from "@/components/dashboard/shared/ViewHead";
-import { actedBy } from "@/features/cases/selectors";
+import { Avatar, Btn, Pill, reasonTone } from "@/components/dashboard/shared/primitives";
+import { sentLabel } from "@/features/cases/rows";
 import ui from "@/components/dashboard/shared/ui.module.css";
 import styles from "./InboxView.module.css";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 
+type Filter = "all" | "late" | "ontime";
+const FILTERS: Filter[] = ["all", "late", "ontime"];
+const FILTER_TITLE: Record<Filter, string> = { all: "Filter: all", late: "Filter: late only", ontime: "Filter: on time only" };
+// Avatar backgrounds: the grey default and four muted accents, picked by name so a person keeps theirs.
+const AVATAR_TONES = ["grey", "blue", "clay", "sage", "lilac"] as const;
+const toneOf = (name: string) => AVATAR_TONES[[...name].reduce((n, ch) => (n * 31 + ch.charCodeAt(0)) >>> 0, 7) % AVATAR_TONES.length];
+const initialsOf = (name: string) => (name.startsWith("Anonymous") ? "?" : name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase());
+
 export function InboxView({ initialId }: { initialId?: string }) {
   const ctx = useDemo();
-  const { seed, D, demo, persona, act, openSheet, showToast, ready, f, href } = ctx;
+  const { seed, S, demo, persona, act, openSheet, showToast, ready, f, href } = ctx;
   // Selection: the page remounts this view (key = ?id) when a search result or link picks a case.
   const [cid, setCid] = useState<string | null>(initialId ?? null);
+  const [query, setQuery] = useState("");
+  const [newest, setNewest] = useState(false);
+  const [filter, setFilter] = useState<Filter>("all");
+  const [now] = useState(() => new Date()); // views render only once `ready`, so this never meets the server render
+  useEffect(() => {
+    if (!cid) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setCid(null); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [cid]);
   if (!ready) return <PageSkeleton kind="inbox" delay />;
 
   const who = persona.who, P = seed.promiseDays;
   const desk = deskCases(ctx), open = openCases(ctx);
   const inbox = inboxSorted(ctx);
   const ideas = inboxIdeas(ctx);
-  // The selection is an idea or a case; with nothing picked, the oldest decision owed wins.
-  const si = ideas.find((i) => i.id === cid) ?? (inbox.some((c) => c.id === cid) ? null : ideas[0] ?? null);
-  const sc = si ? null : inbox.find((c) => c.id === cid) ?? inbox[0] ?? null;
+  // The selection is an idea or a case - or nothing, until a row is picked.
+  const si = ideas.find((i) => i.id === cid) ?? null;
+  const sc = si ? null : inbox.find((c) => c.id === cid) ?? null;
   const route = sc?.route ?? null;
   const scMine = !!route && route.owner.name === who.name;
   const handTo = route ? (scMine ? route.deputy : route.owner.name) : "the triage desk";
@@ -38,7 +59,6 @@ export function InboxView({ initialId }: { initialId?: string }) {
         ? "Past the promise since " + f(sc.escalated.day) + " — " + sc.escalated.to + " sees it too."
         : lastHand ? "From " + lastHand.from + ", " + f(lastHand.day) + (lastHand.why ? " — “" + lastHand.why + "”" : "") : "";
 
-  const cleared = D.cases.map((c) => ({ c, did: actedBy(c, who.name) })).filter((x) => x.did === "decided" || x.did === "handed");
   const overdue = open.filter((c) => c.overdue).length + ideas.filter((i) => i.wait > P).length;
   const stats = [
     { v: String(desk.length + ideas.length), l: open.length === desk.length ? "on your desk" : "on your desk · " + (desk.length - open.length) + " paused" },
@@ -47,105 +67,106 @@ export function InboxView({ initialId }: { initialId?: string }) {
     { v: demo ? seed.metrics.lead.withinPromise : "—", l: "within the promise, Q3" },
   ];
 
-const sel = (c: (typeof inbox)[number]) => { if (c.read === null) act.read(c.id); setCid(c.id); };
+  const sel = (c: (typeof inbox)[number]) => { if (c.read === null) act.read(c.id); setCid(c.id); };
+  const picked = !!(si || sc);
+
+  // A demo day offset (0 = today) as a date; a case raised today in this browser has its real time.
+  const dayDate = (offset: number) => { const d = new Date(now); d.setDate(d.getDate() + offset); return d; };
+  const roleOf = (name: string, dept: string) => seed.people.find((p) => p.name === name)?.role ?? dept;
+
+  // One row shape for ideas owed a decision and cases: who sent it, what it is about, when, the clock.
+  const rows = [
+    ...ideas.map((i) => {
+      const [name, dept = ""] = i.proposedBy.split(", "); // "C. Ilg, Ops"
+      return {
+        id: i.id, title: i.title, name, role: roleOf(name, dept), solves: problemOf(ctx, i)?.title ?? "",
+        sent: dayDate(-i.wait), exact: false, due: P - i.wait, paused: false, open: () => setCid(i.id),
+      };
+    }),
+    ...inbox.map((c) => {
+      const raised = c.history.find((e) => e.type === "case.raised" && !e.seed);
+      const exact = !!raised && c.raisedDay === S.day;
+      return {
+        id: c.id, title: c.title, name: c.from, role: roleOf(c.from, c.fromDept), solves: c.body,
+        sent: exact && raised ? new Date(raised.ts) : dayDate(c.raisedDay - S.day), exact, due: P - c.clock, paused: c.status === "asked", open: () => sel(c),
+      };
+    }),
+  ];
+  const q = query.trim().toLowerCase();
+  const shown = rows
+    .filter((r) => filter === "all" || (filter === "late" ? r.due < 0 : r.due >= 0))
+    .filter((r) => !q || [r.title, r.name, r.role, r.solves].some((t) => t.toLowerCase().includes(q)))
+    .sort((a, b) => (newest ? b.sent.getTime() - a.sent.getTime() : a.sent.getTime() - b.sent.getTime()));
 
   return (
-    <>
-      <ViewHead view="inbox" />
-      <div className={ui.stack14}>
-        <div className={ui.stats}>
+    <div className={styles.page} data-picked={picked ? "true" : undefined}>
+      <h1 className={styles.srOnly}>Inbox</h1>
+      <div className={styles.top}>
+        <div className={`${ui.stats} ${styles.stats}`}>
           {stats.map((k) => (
-            <div key={k.l} className={ui.stat}>
-              <div className={ui.statV} data-hot={k.hot ? "true" : undefined}>{k.v}</div>
-              <div className={ui.statL}>{k.l}</div>
+            <div key={k.l} className={`${ui.stat} ${styles.stat}`}>
+              <div className={`${ui.statV} ${styles.statV}`} data-hot={k.hot ? "true" : undefined}>{k.v}</div>
+              <div className={`${ui.statL} ${styles.statL}`}>{k.l}</div>
             </div>
           ))}
         </div>
+      </div>
 
-        <div className={ui.split}>
-          <div className={ui.stack}>
-            <div className={`${ui.card} ${ui.cardList}`}>
-              {inbox.length === 0 && ideas.length === 0 && (
-                <Empty title="Inbox empty" sub="Nothing is waiting on you." />
-              )}
-              <div className={ui.list}>
-                {ideas.map((i) => {
-                  const late = i.wait > P, soon = i.wait >= P - 2 && !late;
-                  return (
-                    <div key={i.id} className={ui.row} data-active={si?.id === i.id ? "true" : undefined} onClick={() => setCid(i.id)}>
-                      <div className={ui.mark} />
-                      <div className={ui.rowBody}>
-                        <div className={styles.rowTop}>
-                          <div className={styles.rowMain}>
-                            <div className={styles.caseTitle}>{i.title}</div>
-                            <div className={ui.rowSub}>{i.proposedBy} · solves: {problemOf(ctx, i)?.title ?? "—"}</div>
-                          </div>
-                          <div className={styles.rowRight}>
-                            <span className={styles.clock} data-tone={late ? "late" : soon ? "soon" : undefined}>
-                              {late ? i.wait - P + " d past the promise" : P - i.wait + " d left"}
-                            </span>
-                            <span className={styles.open}>waiting {i.wait} d</span>
-                          </div>
-                        </div>
-                        <div className={`${ui.chips} ${styles.why}`}>
-                          <Pill tone="accent">decision</Pill>
-                          {i.blocker && <span className={styles.whyLabel}>{i.blocker}</span>}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-                {inbox.map((c) => {
-                  const paused = c.status === "asked";
-                  const toMe = !!(c.escalated && c.escalated.to === who.name && c.assignee !== who.name);
-                  const late = c.clock > P, soon = c.clock >= P - 2 && !late;
-                  const tone: Tone = paused ? "soft" : toMe ? "ink" : reasonTone(c.reason);
-                  return (
-                    <div key={c.id} className={ui.row} data-active={sc?.id === c.id ? "true" : undefined} data-paused={paused ? "true" : undefined} onClick={() => sel(c)}>
-                      <div className={ui.mark} />
-                      <div className={ui.rowBody}>
-                        <div className={styles.rowTop}>
-                          <div className={styles.rowMain}>
-                            <div className={styles.caseTitle}>{c.title}</div>
-                            <div className={ui.rowSub}>{c.from} · {c.fromDept}</div>
-                          </div>
-                          <div className={styles.rowRight}>
-                            <span className={styles.clock} data-tone={paused ? "paused" : late ? "late" : soon ? "soon" : undefined}>
-                              {paused ? "clock paused" : late ? c.clock - P + " d past the promise" : P - c.clock + " d left"}
-                            </span>
-                            <span className={styles.open}>open {c.clock} d</span>
-                          </div>
-                        </div>
-                        <div className={`${ui.chips} ${styles.why}`}>
-                          <Pill tone={tone}>{paused ? "waiting on " + c.from : toMe ? "escalated from " + c.assignee : c.reason}</Pill>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {cleared.length > 0 && (
-                <div className={styles.cleared}>
-                  <div className={ui.eyebrow}>Cleared today</div>
-                  <div className={`${ui.list} ${ui.mt8}`}>
-                    {cleared.map(({ c, did }) => (
-                      <div key={c.id} className={styles.clearedRow}>
-                        <span className={styles.clearedTitle}>{c.title}</span>
-                        <Pill tone={did === "handed" ? "soft" : "ink"}>
-                          {did === "decided" && c.decided ? "Decided · " + c.decided.answer + (c.decided.reason && c.decided.answer === "no" ? " · " + c.decided.reason : "") : "Handed over · " + c.assignee}
-                        </Pill>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+      <div className={styles.body}>
+        <section className={styles.card} aria-label="Fresh ideas">
+          <div className={styles.cardHead}>
+            <h2 className={styles.cardTitle}>Fresh ideas</h2>
+            <div className={styles.tools}>
+              <label className={styles.search}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
+                <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search" aria-label="Search the inbox" />
+              </label>
+              <button type="button" className={styles.tool} onClick={() => setNewest((v) => !v)} title={newest ? "Sort: newest first" : "Sort: oldest first"} aria-label={newest ? "Sort: newest first" : "Sort: oldest first"}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M7 4v16M3 16l4 4 4-4M17 20V4M13 8l4-4 4 4" /></svg>
+              </button>
+              <button type="button" className={styles.tool} onClick={() => setFilter((v) => FILTERS[(FILTERS.indexOf(v) + 1) % FILTERS.length])} title={FILTER_TITLE[filter]} aria-label={FILTER_TITLE[filter]}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 5h18M6 12h12M10 19h4" /></svg>
+              </button>
             </div>
           </div>
 
-          <div className={`${ui.sticky} ${ui.stack}`}>
-            <div className={ui.card}>
-              <div className={ui.eyebrow}>{si ? "Selected idea" : "Selected case"}</div>
+          {rows.length === 0 ? (
+            <div className={styles.empty}>Nothing is waiting on you.</div>
+          ) : shown.length === 0 ? (
+            <div className={styles.empty}>No ideas match.</div>
+          ) : (
+            <ul className={styles.list}>
+              {shown.map((r) => (
+                <li key={r.id}>
+                  <button type="button" className={styles.row} onClick={r.open} data-active={cid === r.id ? "true" : undefined} aria-current={cid === r.id ? "true" : undefined}>
+                    <span className={styles.avatar} data-tone={toneOf(r.name)} aria-hidden="true">{initialsOf(r.name)}</span>
+                    <span className={styles.rowBody}>
+                      <span className={styles.rowMain}>
+                        <span className={styles.rowTitle}>{r.title}</span>
+                        <span className={styles.rowWho}>{r.name} <span className={styles.rowRole}>· {r.role}</span></span>
+                        {r.solves && <span className={styles.rowSolves}>{r.solves}</span>}
+                      </span>
+                      <span className={styles.rowRight}>
+                        <span className={styles.sent}>{sentLabel(r.sent, now, r.exact)}</span>
+                        <span className={styles.badge} data-tone={r.paused ? "paused" : r.due < 0 ? "late" : "left"}>
+                          {r.paused ? "paused" : r.due < 0 ? -r.due + " d late" : r.due + " d left"}
+                        </span>
+                      </span>
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        {picked && (
+          <section className={`${styles.card} ${styles.detail}`} aria-label={si ? "Selected idea" : "Selected case"}>
+            <div className={styles.detailHead}>
+              <span className={styles.detailTag}>{si ? "Selected idea" : "Selected case"}</span>
+              <button type="button" className={styles.close} onClick={() => setCid(null)} aria-label="Close">×</button>
+            </div>
+            <div className={styles.detailBody}>
               {si ? (
                 <>
                   <div className={ui.h2}>{si.title}</div>
@@ -166,11 +187,7 @@ const sel = (c: (typeof inbox)[number]) => { if (c.read === null) act.read(c.id)
                   </div>
                   <div className={ui.mt14}><Link href={href("/ideas?id=" + si.id)} className={ui.textlink}>Open the idea →</Link></div>
                 </>
-              ) : !sc ? (
-                <>
-                  <div className={ui.h2}>Inbox empty</div>
-                </>
-              ) : (
+              ) : sc && (
                 <>
                   <div className={ui.h2}>{sc.title}</div>
                   <div className={`${ui.chips} ${styles.selMeta}`}>
@@ -227,9 +244,9 @@ const sel = (c: (typeof inbox)[number]) => { if (c.read === null) act.read(c.id)
                 </>
               )}
             </div>
-          </div>
-        </div>
+          </section>
+        )}
       </div>
-    </>
+    </div>
   );
 }
